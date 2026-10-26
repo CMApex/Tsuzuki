@@ -20,7 +20,7 @@ Bump `"version"` in `package.json` first if this version number was already sign
 ## 2. Upload
 
 1. Go to the [Developer Hub](https://addons.mozilla.org/developers/) and sign in with your Mozilla account.
-2. Tsuzuki already exists there (unlisted signing claimed the ID `tsuzuki@cmapex`). Open it and choose **Upload New Version**. When asked how to distribute, choose **On this site**. If AMO asks for listing details at that point, they're all in section 3.
+2. **First time:** choose **Submit a New Add-on** → **On this site**. This claims the ID `tsuzuki@cmapex`. **Later versions:** open Tsuzuki → **Upload New Version** → **On this site**. (If you ever signed it unlisted with `npm run sign:firefox`, the add-on already exists, so use Upload New Version.) The listing details are all in section 3.
 3. Upload `tsuzuki-<version>.zip`. Validation should report no errors or warnings.
 4. **Platforms:** Firefox only. Leave **Firefox for Android unticked** until it has been tested there.
 5. **Source code:** Yes, then upload `tsuzuki-<version>-source.zip`.
