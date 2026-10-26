@@ -157,8 +157,11 @@ function searchBox() {
   el.q.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (moveSelection(e.key === 'ArrowDown' ? 1 : -1)) e.preventDefault();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === 'Escape' || (e.ctrlKey && e.key === '[')) {
+      // Leave the box (vim-style), so the page's own keys take over.
+      e.preventDefault();
       el.matches.replaceChildren();
+      el.q.blur();
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const picked = el.matches.querySelector('a[aria-selected="true"]');
@@ -219,7 +222,7 @@ function videoCard(e) {
   const pct = Math.min(100, Math.round((e.t / e.dur) * 100));
   return h(
     href ? 'a' : 'div',
-    { class: 'card-v', href },
+    { class: 'card-v', href, 'data-nav': 'resume', 'data-key': e.key, tabindex: href ? null : '0' },
     h(
       'div',
       { class: 'thumb' },
@@ -312,7 +315,7 @@ function fillSections() {
             h(
               'li',
               {},
-              h('a', { href: searchLinkFor(e.src, e.q), text: e.q, title: `${labelForSrc(e.src)} · ${ago(e.at)}` }),
+              h('a', { href: searchLinkFor(e.src, e.q), text: e.q, title: `${labelForSrc(e.src)} · ${ago(e.at)}`, 'data-nav': 'searches', 'data-key': e.key }),
               h('span', { class: 'src', text: labelForSrc(e.src) }),
               againSelect(e),
             ),
@@ -333,7 +336,12 @@ function fillSections() {
           watched.map((e) => {
             const href = linkForKey(e.key);
             const t = e.title || `${labelForKey(e.key)} video`;
-            return h('li', {}, href ? h('a', { href, text: t }) : h('span', { text: t }), h('span', { class: 'src', text: `${labelForKey(e.key)} · ${ago(e.at)}` }));
+            return h(
+              'li',
+              {},
+              href ? h('a', { href, text: t, 'data-nav': 'watched', 'data-key': e.key }) : h('span', { text: t }),
+              h('span', { class: 'src', text: `${labelForKey(e.key)} · ${ago(e.at)}` }),
+            );
           }),
         ),
       ),
@@ -363,6 +371,7 @@ function footer() {
       hasInv ? 'YouTube thumbnails (via your Invidious)' : 'YouTube thumbnails (loads from YouTube)',
     ),
     h('span', {}, 'Open this page with ', h('kbd', { text: 'Alt+Shift+H' })),
+    h('span', {}, h('kbd', { text: '?' }), ' keyboard shortcuts'),
     h('a', { href: OPTIONS_URL, text: 'Settings' }),
   );
 }
@@ -460,6 +469,186 @@ async function start() {
   if (!s.unlocked) return lockedView();
   return mainView();
 }
+
+// ---------------------------------------------------------------------------
+// Keyboard (Vimium can't run on extension pages, so the page brings its own)
+// ---------------------------------------------------------------------------
+
+const HINT_CHARS = 'sadfjklewcmpgh';
+const KEYS = [
+  ['/  i', 'Search box'],
+  ['Esc  Ctrl+[', 'Leave the search box / close hints'],
+  ['j  k', 'Next / previous item'],
+  ['Enter  o', 'Open the selected item'],
+  ['O', 'Open it in a new tab'],
+  ['x', 'Forget the selected item'],
+  ['f  F', 'Link hints (F: new tab)'],
+  ['gg  G', 'First / last item'],
+  ['r', 'Refresh'],
+  ['?', 'This help'],
+];
+
+let hints = null; // { items: [{ el, label, tag }], typed, newTab, layer }
+let pendingG = false;
+
+function isTyping(target) {
+  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+}
+
+function navItems() {
+  return [...document.querySelectorAll('[data-nav]')];
+}
+
+function select(delta) {
+  const items = navItems();
+  if (!items.length) return;
+  const i = items.indexOf(document.activeElement);
+  const next = i === -1 ? (delta > 0 ? 0 : items.length - 1) : Math.max(0, Math.min(items.length - 1, i + delta));
+  items[next].focus();
+  items[next].scrollIntoView?.({ block: 'nearest' });
+}
+
+function selectEdge(last) {
+  const items = navItems();
+  if (!items.length) return;
+  const el = items[last ? items.length - 1 : 0];
+  el.focus();
+  el.scrollIntoView?.({ block: 'nearest' });
+}
+
+function openEl(target, newTab) {
+  const href = target?.getAttribute?.('href');
+  if (!href) return;
+  if (newTab) window.open(href, '_blank', 'noopener');
+  else navigate(href);
+}
+
+function hintLabels(n) {
+  const k = HINT_CHARS.length;
+  let len = 1;
+  while (k ** len < n) len++;
+  return Array.from({ length: n }, (_, i) => {
+    let label = '';
+    for (let j = 0, x = i; j < len; j++, x = Math.floor(x / k)) label = HINT_CHARS[x % k] + label;
+    return label;
+  });
+}
+
+function startHints(newTab) {
+  const targets = [...document.querySelectorAll('a[href], button, select, input')].filter((t) => {
+    if (t.closest('[hidden], .hint-layer, .help-layer') || t.disabled) return false;
+    const r = t.getBoundingClientRect();
+    if (!r.width && !r.height) return !r.top && !r.left; // unmeasured (tests): keep; truly hidden: skip
+    return r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+  });
+  if (!targets.length) return;
+  const labels = hintLabels(targets.length);
+  const layer = h('div', { class: 'hint-layer', 'aria-hidden': 'true' });
+  const items = targets.map((t, i) => {
+    const r = t.getBoundingClientRect();
+    const tag = h('span', { class: 'hint', text: labels[i].toUpperCase(), style: `left:${Math.max(0, r.left)}px;top:${Math.max(0, r.top)}px` });
+    layer.append(tag);
+    return { el: t, label: labels[i], tag };
+  });
+  document.body.append(layer);
+  hints = { items, typed: '', newTab, layer };
+}
+
+function stopHints() {
+  hints?.layer.remove();
+  hints = null;
+}
+
+function hintKey(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.key === 'Escape' || (e.ctrlKey && e.key === '[')) return stopHints();
+  if (e.key === 'Backspace') hints.typed = hints.typed.slice(0, -1);
+  else if (e.key.length === 1 && HINT_CHARS.includes(e.key.toLowerCase())) hints.typed += e.key.toLowerCase();
+  else return;
+  const matching = hints.items.filter((it) => it.label.startsWith(hints.typed));
+  for (const it of hints.items) it.tag.hidden = !it.label.startsWith(hints.typed);
+  if (!matching.length) return stopHints();
+  if (matching.length === 1 && matching[0].label === hints.typed) {
+    const { el: t } = matching[0];
+    const newTab = hints.newTab;
+    stopHints();
+    if (t.tagName === 'A') openEl(t, newTab);
+    else if (t.tagName === 'BUTTON') t.click();
+    else t.focus();
+  }
+}
+
+function toggleHelp() {
+  const open = document.querySelector('.help-layer');
+  if (open) return open.remove();
+  document.body.append(
+    h(
+      'div',
+      { class: 'help-layer', role: 'dialog', 'aria-label': 'Keyboard shortcuts', onclick: (e) => e.currentTarget.remove() },
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', { text: 'Keyboard' }),
+        h('table', {}, KEYS.map(([k, what]) => h('tr', {}, h('td', {}, k.split('  ').map((x) => h('kbd', { text: x }))), h('td', { text: what })))),
+        h('p', { class: 'muted', text: 'Vimium can’t run on extension pages (a browser rule), so these are built in.' }),
+      ),
+    ),
+  );
+}
+
+document.addEventListener(
+  'keydown',
+  (e) => {
+    if (hints) return hintKey(e);
+    if (e.defaultPrevented || e.altKey || e.metaKey || (e.ctrlKey && e.key !== '[') || isTyping(e.target)) return;
+    if (!el.sections?.isConnected) return; // only on the unlocked main view
+    const help = document.querySelector('.help-layer');
+    if (help && (e.key === 'Escape' || e.key === '?')) {
+      e.preventDefault();
+      return help.remove();
+    }
+    const k = e.key;
+    if (k === 'g') {
+      if (pendingG) selectEdge(false);
+      pendingG = !pendingG;
+      return;
+    }
+    pendingG = false;
+    const act = {
+      '/': () => el.q.focus(),
+      i: () => el.q.focus(),
+      j: () => select(1),
+      k: () => select(-1),
+      G: () => selectEdge(true),
+      o: () => openEl(document.activeElement, false),
+      O: () => openEl(document.activeElement, true),
+      x: () => {
+        const t = document.activeElement;
+        if (t?.dataset?.nav) {
+          const items = navItems();
+          const i = items.indexOf(t);
+          forgetItem(t.dataset.nav, t.dataset.key).then(() => {
+            const after = navItems();
+            after[Math.min(i, after.length - 1)]?.focus();
+          });
+        }
+      },
+      f: () => startHints(false),
+      F: () => startHints(true),
+      r: async () => {
+        await loadLists();
+        fillSections();
+      },
+      '?': () => toggleHelp(),
+    }[k];
+    if (act) {
+      e.preventDefault();
+      act();
+    }
+  },
+  true,
+);
 
 // Refresh when the tab comes back into view (handy as a new-tab / home page).
 document.addEventListener('visibilitychange', async () => {

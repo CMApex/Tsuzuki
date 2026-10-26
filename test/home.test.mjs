@@ -170,3 +170,76 @@ test('home: thumbnails are opt-in and go through your Invidious when you have on
   assert.equal(p.went.at(-1), 'https://yewtu.be/search?q=some%20video');
   p.close();
 });
+
+test('home: built-in vim-style keys (Vimium cannot run on extension pages)', async () => {
+  let clock = Date.now() - 60_000;
+  const bg = createBackground(fakeBrowser({}), { kdfIterations: 2000, now: () => (clock += 1000) });
+  await bg.handle({ type: 'create', passphrase: PASS }, PAGE);
+  await contentCall(bg, 'progress', { key: 'yt:AAAAAAAAAAA', t: 125, dur: 600, title: 'First video' });
+  await contentCall(bg, 'progress', { key: 'yt:BBBBBBBBBBB', t: 200, dur: 600, title: 'Second video' });
+  await contentCall(bg, 'search', { q: 'kintsugi', src: 'google' });
+
+  const p = await openHome(bg);
+  const { $, $$, doc, went, window } = p;
+  const press = (key, opts = {}) => (doc.activeElement || doc.body).dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...opts }));
+  try {
+    await until(() => $$('.card-v').length === 2, 'cards');
+    const q = $('.qbox input');
+    assert.equal(doc.activeElement, q, 'search box focused on load');
+
+    // Typing letters in the box doesn't trigger shortcuts.
+    press('j');
+    assert.equal(doc.activeElement, q);
+
+    // Esc and Ctrl+[ leave the box.
+    press('Escape');
+    assert.notEqual(doc.activeElement, q);
+    press('/');
+    assert.equal(doc.activeElement, q, '/ focuses search');
+    press('[', { ctrlKey: true });
+    assert.notEqual(doc.activeElement, q, 'Ctrl+[ works like Esc');
+
+    // j/k move through items; o opens; G and gg jump.
+    press('j');
+    assert.equal(doc.activeElement.dataset.key, 'yt:BBBBBBBBBBB', 'newest first');
+    press('j');
+    assert.equal(doc.activeElement.dataset.key, 'yt:AAAAAAAAAAA');
+    press('k');
+    assert.equal(doc.activeElement.dataset.key, 'yt:BBBBBBBBBBB');
+    press('G');
+    assert.equal(doc.activeElement.dataset.nav, 'searches');
+    press('g');
+    press('g');
+    assert.equal(doc.activeElement.dataset.key, 'yt:BBBBBBBBBBB');
+    press('o');
+    assert.equal(went.at(-1), 'https://www.youtube.com/watch?v=BBBBBBBBBBB&t=200s');
+
+    // x forgets the selected item and keeps a selection.
+    press('x');
+    await until(() => $$('.card-v').length === 1, 'forgotten');
+    assert.equal(doc.activeElement.dataset.key, 'yt:AAAAAAAAAAA', 'selection moves to the next item');
+
+    // f shows link hints; typing a label activates it.
+    press('f');
+    const tags = $$('.hint-layer .hint');
+    assert.ok(tags.length > 3, 'hints on links and buttons');
+    const cardHint = tags.find((t, i) => {
+      const card = $('.card-v');
+      return t.textContent && i === [...doc.querySelectorAll('a[href], button, select, input')].indexOf(card);
+    });
+    for (const ch of cardHint.textContent.toLowerCase()) press(ch);
+    assert.equal($('.hint-layer'), null, 'hints closed');
+    assert.equal(went.at(-1), 'https://www.youtube.com/watch?v=AAAAAAAAAAA&t=125s');
+    press('f');
+    press('Escape');
+    assert.equal($('.hint-layer'), null, 'Esc cancels hints');
+
+    // ? toggles help.
+    press('?');
+    assert.ok($('.help-layer'));
+    press('Escape');
+    assert.equal($('.help-layer'), null);
+  } finally {
+    p.close();
+  }
+});

@@ -42,6 +42,7 @@ Open it with **Alt+Shift+H** (change it under *about:addons → ⚙ → Manage E
 
 - **Search box:** Enter searches your default engine (click any engine chip while the box is empty to change it). Click a chip to search there instead, or use a bang anywhere in the query: `!g` `!yt` `!ddg` `!b` `!br` `!k` `!sp` `!eco` `!qw` `!mj` `!y` `!yj` `!ya` `!bd` `!nv`, and `!sx` `!inv` `!pi` `!pt` for your instances. As you type, matching videos and past searches from your own history appear; arrow keys + Enter open one. Matching is fuzzy: words in any order, typos (`kintusgi`), abbreviations (`kntsg`), and accents, full/half-width and katakana/hiragana don't matter. The popup's filter works the same way.
 - **Continue watching** across YouTube, Nebula, Twitch, Vimeo and your instances, with time left and a per-service filter.
+- **Keyboard:** Vimium can't run on extension pages (a browser rule, not a bug), so the home page has its own vim-style keys. `Esc` or `Ctrl+[` leaves the search box, `/` or `i` goes back; `j`/`k` move through items, `Enter`/`o` open (`O` in a new tab), `x` forgets, `gg`/`G` jump, `f`/`F` show link hints, `r` refreshes, `?` lists them all.
 - **Thumbnails are off by default**, because loading them tells the video site which videos are on your page. Turn them on in the footer; if you've added an Invidious instance they load through it instead of from YouTube.
 
 ## How it works
