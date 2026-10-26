@@ -8,7 +8,8 @@ import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createBackground } from '../extension/src/background/core.js';
-import { fakeBrowser, PAGE, CONTENT } from './helpers/fake-browser.mjs';
+import { fakeBrowser, PAGE, CONTENT, contentCall } from './helpers/fake-browser.mjs';
+import { SERVICES } from '../extension/src/core/services.js';
 
 const uiDir = new URL('../extension/src/ui/', import.meta.url);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -75,7 +76,7 @@ test('popup: create vault, browse lists safely, settings, lock/unlock', async ()
     await until(() => $('.tab'), 'main view');
 
     // Record something with a hostile title, then look at the list.
-    await bg.handle({ type: 'progress', key: 'yt:AAAAAAAAAAA', t: 125, dur: 600, title: '<img src=x onerror="window.pwned=1">', ch: 'Chan' }, CONTENT);
+    await bg.handle({ type: 'progress', service: 'youtube', key: 'yt:AAAAAAAAAAA', t: 125, dur: 600, title: '<img src=x onerror="window.pwned=1">', ch: 'Chan' }, CONTENT);
     byText('.tab', 'Settings').click();
     $$('.tab')[0].click(); // back to "Continue", which re-fetches the list
     const title = await until(() => $('.item .title'), 'list item');
@@ -97,10 +98,31 @@ test('popup: create vault, browse lists safely, settings, lock/unlock', async ()
     $('.item .x').click();
     await until(() => !$('.item'), 'item removed');
 
-    // Settings renders the vault code and toggles.
+    // Searches: labelled by engine, and can be re-run on any other enabled engine.
+    await contentCall(bg, 'search', { q: 'kintsugi', src: 'google' });
+    type($('.filter'), ''); // the filter carries across tabs
+    $$('.tab').find((t) => t.textContent.startsWith('Searches')).click();
+    const again = await until(() => $('select.again'), 'search-again menu');
+    assert.match($('.item .meta').textContent, /^Google · /);
+    const labels = [...again.options].map((o) => o.textContent);
+    assert.ok(labels.includes('DuckDuckGo') && labels.includes('YouTube'));
+    assert.ok(!labels.includes('Google'), 'not the engine it came from');
+    assert.ok(!labels.includes('Naver'), 'not engines that are switched off');
+    again.value = 'duckduckgo';
+    again.dispatchEvent(new window.Event('change'));
+    assert.equal(opened.at(-1), 'https://duckduckgo.com/?q=kintsugi');
+
+    // Settings renders the vault code, toggles and one chip per service.
     byText('.tab', 'Settings').click();
     await until(() => $$('.code').some((c) => c.textContent === code), 'vault code in settings');
     assert.equal($$('.toggle input[type=checkbox]').length, 5);
+    assert.equal($$('.chip input').length, SERVICES.length);
+    const nebula = $$('.chip').find((c) => c.textContent === 'Nebula').querySelector('input');
+    assert.equal(nebula.checked, false, 'new services start off');
+    nebula.click();
+    await until(() => $('.notice.ok')?.textContent.startsWith('Nebula on'), 'service saved');
+    assert.equal((await bg.handle({ type: 'status' }, PAGE)).cfg.services.nebula, true);
+    assert.match(byText('h2', 'Your instances').parentElement.textContent, /Firefox \/ Zen/);
 
     // Lock → locked screen → unlock.
     byText('button', 'Lock').click();

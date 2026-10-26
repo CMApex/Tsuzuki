@@ -13,13 +13,27 @@ Tsuzuki gives those features back **locally**:
 
 - **Resume points.** Reopen a video and it jumps back to where you stopped (with a one-tap *Start over*).
 - **Watched.** Videos you finish are remembered; thumbnails get a progress bar.
-- **Search history.** Queries on Google, DuckDuckGo, Bing, Brave, Kagi and YouTube.
+- **Search history**, with **"search again on…"** to re-run any remembered query on another engine.
+- **Per-service opt-in.** Switch each site on or off; Tsuzuki only remembers what happens on the ones you choose.
+- **Your own instances.** Add Invidious, Piped, PeerTube or SearXNG servers. Invidious and Piped share history with YouTube.
 - **No algorithm.** Nothing is ranked or recommended. It's a ledger, not a feed.
 - **Encrypted at rest**, with a passphrase only you know.
 - **Optional sync** between your devices through a tiny relay *you* run, which only ever sees ciphertext.
 - **Never records** in private windows.
 
 Runs in **Firefox / Zen** (desktop) and **Safari** (macOS + iOS) from one codebase.
+
+## Supported services
+
+| | On by default | Opt-in |
+|---|---|---|
+| **Video** | YouTube, YouTube Music | Nebula, Twitch VODs, Vimeo (incl. embeds on other sites) |
+| **Search** | Google, YouTube, DuckDuckGo (incl. HTML & Lite), Bing, Brave Search, Kagi | Startpage, Ecosia, Qwant, Mojeek, Yahoo, Yahoo! JAPAN, Yandex, Baidu, Naver |
+| **Your instances** (Firefox / Zen) | | Invidious, Piped, PeerTube, SearXNG |
+
+Toggle them under **Settings → Services**. YouTube Shorts and live streams aren't tracked. Everything about each site lives in [`extension/src/core/services.js`](extension/src/core/services.js) (URL formats) and [`extension/src/content/adapters.js`](extension/src/content/adapters.js) (player and title selectors), so adding one is a small, self-contained change.
+
+The extension's content scripts are declared for every supported site, so your browser lists them all in Tsuzuki's permissions; on a switched-off site the script asks one question and exits without touching the page. Instances are different: each one is granted individually when you add it, and handed back when you remove it.
 
 ## How it works
 
@@ -125,7 +139,8 @@ Your phone needs to reach it over **HTTPS**. Two easy ways:
 
 - Turning off Google's history toggles controls what Google *shows you*, not what it *sees*. Google still serves every video and search, so it still knows about them. Tsuzuki doesn't change that; it only stops you from paying for privacy with convenience. Pair it with a privacy front-end if you want Google to see less.
 - Resuming a video tells YouTube you started at 12:34, the same as opening a `&t=754s` link.
-- Thumbnail progress bars are drawn in closed shadow DOM on *every* thumbnail, seen or not, so YouTube's scripts can't learn your local history by looking at which thumbnails got decorated.
+- Thumbnail progress bars are drawn in closed shadow DOM on *every* thumbnail, seen or not, so a site's own scripts can't learn your local history by looking at which thumbnails got decorated.
+- Each site's script can only read and write its own part of the ledger: the background checks that the page sending an event really belongs to that service, and that the video key is in that service's namespace.
 - The relay learns: your vault id, device ids, blob sizes and when you sync, and your IP. It can't read or forge anything.
 - **Exports are plain JSON.** Handle them like the history they are.
 
@@ -142,9 +157,10 @@ npm run lint                     # web-ext lint
 Layout:
 
 ```
-extension/src/core/        model (CRDT), crypto, sync, URL parsing — pure, shared, tested
+extension/src/core/        model (CRDT), crypto, sync, services registry, URL parsing — pure, shared, tested
 extension/src/background/  vault, lock/unlock, storage, sync scheduling, message API
-extension/src/content/     youtube.js (resume, progress, thumbnails), search.js
+extension/src/content/     tracker.js (resume, progress, thumbnails) + adapters.js per site;
+                           video.js / search.js / instance.js entry points
 extension/src/ui/          popup + options page
 relay/                     Rust (axum) zero-knowledge blob store
 test/                      node:test suites, incl. two devices syncing through a real relay
@@ -152,9 +168,9 @@ test/                      node:test suites, incl. two devices syncing through a
 
 ## Status
 
-v0.1, built in one sitting. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The YouTube content script is tested against a simulated player, not live YouTube, and YouTube changes its markup often; selectors live at the top of `content/youtube.js`.
+v0.2. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
 
-Not yet: changing the passphrase, pruning old tombstones, sites beyond YouTube and the search engines above.
+Not yet: changing the passphrase, pruning old tombstones, custom instances in Safari (it can't register content scripts for new sites at runtime).
 
 ## License
 

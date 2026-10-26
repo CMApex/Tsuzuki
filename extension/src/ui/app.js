@@ -2,7 +2,11 @@
 // Tsuzuki popup + options page. Plain DOM, no framework; every piece of
 // remembered text is inserted with textContent, never as HTML.
 
-import { formatTime, searchLink, youtubeLink } from '../core/parse.js';
+import { formatTime } from '../core/parse.js';
+import {
+  INSTANCE_TYPES, SEARCH, SERVICES, VIDEO, labelForKey, labelForSrc, linkForKey, normalizeInstanceUrl, searchLinkFor,
+  searchTargets,
+} from '../core/services.js';
 
 const api = globalThis.browser ?? globalThis.chrome;
 const isPopup = document.body.dataset.mode === 'popup';
@@ -376,7 +380,7 @@ function emptyState(kind) {
     : {
         resume: 'Start a video and stop partway through. It will wait for you here.',
         watched: 'Videos you finish show up here.',
-        searches: 'Searches on Google, DuckDuckGo, Bing, Brave, Kagi and YouTube show up here.',
+        searches: "Searches on the engines you've switched on (Settings → Services) show up here.",
       }[kind];
   return h('li', { class: 'empty' }, h('span', { class: 'glyph', text: '〇' }), text);
 }
@@ -402,32 +406,55 @@ function row(kind, e) {
     },
   });
 
-  let title, meta, link, bar = null;
+  let title, meta, link, extra = null;
   if (kind === 'searches') {
     title = e.q;
-    meta = `${e.src} · ${ago(e.at)}`;
-    link = searchLink(e.q, e.src);
+    meta = `${labelForSrc(e.src)} · ${ago(e.at)}`;
+    link = searchLinkFor(e.src, e.q);
+    extra = searchAgain(e);
   } else {
-    title = e.title || e.key.replace(/^yt:/, 'YouTube video ');
+    title = e.title || `${labelForKey(e.key)} video`;
     const where = kind === 'resume' ? `${formatTime(e.t)} of ${formatTime(e.dur)}` : 'finished';
-    meta = [e.ch, where, ago(e.at)].filter(Boolean).join(' · ');
-    link = youtubeLink(e.key, kind === 'resume' ? e.t : 0);
+    meta = [labelForKey(e.key), e.ch, where, ago(e.at)].filter(Boolean).join(' · ');
+    link = linkForKey(e.key, kind === 'resume' ? e.t : 0);
     if (kind === 'resume') {
-      bar = h('div', { class: 'bar' }, h('i', { style: `width:${Math.min(100, Math.round((e.t / e.dur) * 100))}%` }));
+      extra = h('div', { class: 'bar' }, h('i', { style: `width:${Math.min(100, Math.round((e.t / e.dur) * 100))}%` }));
     }
   }
 
-  const a = h('a', {
-    class: 'title',
-    href: link,
-    text: title,
-    onclick: (ev) => {
-      ev.preventDefault();
-      open(link);
-    },
-  });
-  const li = h('li', { class: 'item' }, a, forgetBtn, h('div', { class: 'meta', text: meta }), bar);
+  const a = link
+    ? h('a', {
+        class: 'title',
+        href: link,
+        text: title,
+        onclick: (ev) => {
+          ev.preventDefault();
+          open(link);
+        },
+      })
+    : h('span', { class: 'title', text: title });
+  const li = h('li', { class: 'item' }, a, forgetBtn, h('div', { class: 'meta', text: meta }), extra);
   return li;
+}
+
+/** "Search again on…": re-run a remembered query on any other enabled engine or instance. */
+function searchAgain(e) {
+  const targets = searchTargets(ui.status.cfg.services, ui.status.cfg.instances).filter((t) => t.src !== e.src);
+  if (!targets.length) return null;
+  return h(
+    'select',
+    {
+      class: 'again',
+      'aria-label': `Search again for "${e.q}" on…`,
+      onchange: (ev) => {
+        const src = ev.target.value;
+        ev.target.value = '';
+        if (src) open(searchLinkFor(src, e.q));
+      },
+    },
+    h('option', { value: '', text: 'Search again on…' }),
+    targets.map((t) => h('option', { value: t.src, text: t.label })),
+  );
 }
 
 function copyButton(text) {
@@ -460,7 +487,7 @@ function settingsView() {
         onchange: (e) =>
           act(null, async () => {
             await call('settings', { features: { [key]: e.target.checked } });
-            ui.notice = { kind: 'ok', text: 'Saved. Reload open YouTube tabs to apply.' };
+            ui.notice = { kind: 'ok', text: 'Saved. Reload open tabs to apply.' };
           }),
       }),
       h('span', {}, h('b', { text: label }), h('small', { text: hint })),
@@ -505,8 +532,10 @@ function settingsView() {
       toggle('recording', 'Remember things', 'Master switch. Off means nothing new is recorded anywhere.'),
       toggle('resume', 'Resume where I stopped', 'Jumps back to your last position when you reopen a video.'),
       toggle('badges', 'Progress bars on thumbnails', 'Drawn privately inside the page; YouTube cannot read them.'),
-      toggle('searches', 'Search history', 'Google, DuckDuckGo, Bing, Brave, Kagi and YouTube searches.'),
+      toggle('searches', 'Search history', 'Queries on the search engines switched on below.'),
     ),
+    servicesCard(s),
+    instancesCard(s),
     h(
       'form',
       {
@@ -606,3 +635,106 @@ async function refresh() {
 }
 
 refresh();
+
+// ---------------------------------------------------------------------------
+// Services & instances
+// ---------------------------------------------------------------------------
+
+function servicesCard(s) {
+  const enabled = s.cfg.services;
+  const box = (svc) =>
+    h(
+      'label',
+      { class: 'chip' },
+      h('input', {
+        type: 'checkbox',
+        checked: enabled[svc.id],
+        onchange: (e) =>
+          act(null, async () => {
+            await call('settings', { services: { [svc.id]: e.target.checked } });
+            ui.notice = { kind: 'ok', text: `${svc.label} ${e.target.checked ? 'on' : 'off'}. Reload open tabs to apply.` };
+          }),
+      }),
+      h('span', { text: svc.label }),
+    );
+  return h(
+    'div',
+    { class: 'card' },
+    h('h2', { text: 'Services' }),
+    h('p', { text: 'Tsuzuki only remembers things on the sites switched on here.' }),
+    h('h3', { text: 'Video' }),
+    h('div', { class: 'chips' }, SERVICES.filter((x) => x.kind === VIDEO).map(box)),
+    h('h3', { text: 'Search' }),
+    h('div', { class: 'chips' }, SERVICES.filter((x) => x.kind === SEARCH).map(box)),
+  );
+}
+
+function instancesCard(s) {
+  const card = h('div', { class: 'card' }, h('h2', { text: 'Your instances' }));
+  if (!s.instancesSupported) {
+    card.append(h('p', { text: 'Invidious, Piped, PeerTube and SearXNG instances can be added in Firefox / Zen. This browser can’t add sites at runtime yet.' }));
+    return card;
+  }
+  card.append(
+    h('p', { text: 'Self-hosted front-ends and search. Invidious and Piped share history with YouTube: start a video on one, resume it on the other.' }),
+  );
+
+  const list = h('ul', { class: 'list' });
+  for (const inst of s.cfg.instances) {
+    const host = new URL(inst.origin).host;
+    list.append(
+      h(
+        'li',
+        { class: 'item inst' },
+        h(
+          'label',
+          { class: 'toggle' },
+          h('input', {
+            type: 'checkbox',
+            checked: inst.enabled,
+            onchange: (e) => act(null, () => call('setInstance', { origin: inst.origin, enabled: e.target.checked })),
+          }),
+          h('span', {}, h('b', { text: host }), h('small', { text: INSTANCE_TYPES[inst.type]?.label || inst.type })),
+        ),
+        armedButton('Remove', 'Tap again', (b) => act(b, () => call('removeInstance', { origin: inst.origin }))),
+      ),
+    );
+  }
+  if (s.cfg.instances.length) card.append(list);
+
+  const type = h(
+    'select',
+    { class: 'type' },
+    Object.entries(INSTANCE_TYPES).map(([id, t]) => h('option', { value: id, text: t.label })),
+  );
+  const url = input({ type: 'url', placeholder: 'yewtu.be or https://search.example.org', inputmode: 'url' });
+  const add = h('button', { class: 'btn', type: 'submit', text: 'Add' });
+  card.append(
+    h(
+      'form',
+      {
+        class: 'row add-inst',
+        onsubmit: (e) => {
+          e.preventDefault();
+          let parsed;
+          try {
+            parsed = normalizeInstanceUrl(url.value);
+          } catch (err) {
+            return say('err', err.message);
+          }
+          // Must be requested straight from the click, before any await.
+          const asked = api.permissions.request({ origins: [parsed.pattern] });
+          act(add, async () => {
+            if (!(await asked)) throw new Error(`Permission for ${parsed.host} wasn't granted.`);
+            await call('addInstance', { url: parsed.origin, instanceType: type.value });
+            ui.notice = { kind: 'ok', text: `Added ${parsed.host}. Reload its open tabs to start.` };
+          });
+        },
+      },
+      type,
+      url,
+      add,
+    ),
+  );
+  return card;
+}

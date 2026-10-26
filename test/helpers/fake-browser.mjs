@@ -44,3 +44,53 @@ export function fakeBrowser(shared = {}) {
 
 export const PAGE = { url: 'moz-extension://tsuzuki-test/ui/popup.html' };
 export const CONTENT = { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tab: { id: 1 } };
+
+const SEARCH_PAGES = {
+  google: 'https://www.google.com/search?q=x',
+  duckduckgo: 'https://duckduckgo.com/?q=x',
+  youtube: 'https://www.youtube.com/results?search_query=x',
+};
+
+/**
+ * Send a message as a content script would: from a page that belongs to the
+ * service in question (YouTube by default, the engine's results page for searches).
+ */
+export function contentCall(bg, type, extra = {}, url) {
+  const msg = { type, ...extra };
+  if (['progress', 'getResume', 'getMany'].includes(type) && !msg.service) msg.service = 'youtube';
+  const from = url || (type === 'search' ? SEARCH_PAGES[msg.src] : CONTENT.url);
+  return bg.handle(msg, { url: from, tab: { id: 1 } });
+}
+
+/** Minimal scripting + permissions APIs, for instance tests. */
+export function addInstanceApis(api, granted = new Set()) {
+  const registered = new Map();
+  api.scripting = {
+    async getRegisteredContentScripts() {
+      return [...registered.values()];
+    },
+    async registerContentScripts(list) {
+      for (const s of list) {
+        if (registered.has(s.id)) throw new Error(`duplicate script id ${s.id}`);
+        registered.set(s.id, s);
+      }
+    },
+    async unregisterContentScripts({ ids }) {
+      for (const id of ids) registered.delete(id);
+    },
+  };
+  api.permissions = {
+    async contains({ origins }) {
+      return origins.every((o) => granted.has(o));
+    },
+    async request({ origins }) {
+      origins.forEach((o) => granted.add(o));
+      return true;
+    },
+    async remove({ origins }) {
+      origins.forEach((o) => granted.delete(o));
+      return true;
+    },
+  };
+  return { registered, granted };
+}

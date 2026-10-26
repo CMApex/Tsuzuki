@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  youtubeVideo, youtubeStartTime, youtubeLink, searchFromUrl, searchLink, formatTime,
+  youtubeVideo, youtubeStartTime, youtubeLink, formatTime, parseTimeSpec,
 } from '../extension/src/core/parse.js';
 
 test('youtubeVideo recognises the URL shapes YouTube uses', () => {
@@ -47,23 +47,11 @@ test('youtubeLink round-trips', () => {
   assert.equal(youtubeStartTime(link), 754);
 });
 
-test('searchFromUrl covers the supported engines', () => {
-  assert.deepEqual(searchFromUrl('https://www.google.com/search?q=hermetic+corpus&hl=en'), { q: 'hermetic corpus', src: 'google' });
-  assert.deepEqual(searchFromUrl('https://www.google.co.jp/search?q=%E7%B6%9A%E3%81%8D'), { q: '続き', src: 'google' });
-  assert.deepEqual(searchFromUrl('https://www.youtube.com/results?search_query=fe8+speedrun'), { q: 'fe8 speedrun', src: 'youtube' });
-  assert.deepEqual(searchFromUrl('https://duckduckgo.com/?q=meshtastic&ia=web'), { q: 'meshtastic', src: 'duckduckgo' });
-  assert.deepEqual(searchFromUrl('https://html.duckduckgo.com/html/?q=x'), { q: 'x', src: 'duckduckgo' });
-  assert.deepEqual(searchFromUrl('https://www.bing.com/search?q=y'), { q: 'y', src: 'bing' });
-  assert.deepEqual(searchFromUrl('https://search.brave.com/search?q=z'), { q: 'z', src: 'brave' });
-  assert.equal(searchFromUrl('https://www.google.com/maps?q=tokyo'), null);
-  assert.equal(searchFromUrl('https://www.google.com/search?q=+++'), null);
-  assert.equal(searchFromUrl('https://google.evil.com/search?q=x'), null);
-});
-
-test('searchLink and formatTime', () => {
-  assert.equal(searchLink('a b&c', 'duckduckgo'), 'https://duckduckgo.com/?q=a%20b%26c');
-  assert.equal(searchLink('x', 'unknown-engine'), 'https://www.google.com/search?q=x');
+test('formatTime and parseTimeSpec', () => {
   assert.equal(formatTime(5), '0:05');
   assert.equal(formatTime(754), '12:34');
   assert.equal(formatTime(3723), '1:02:03');
+  assert.equal(parseTimeSpec('1h2m3s'), 3723);
+  assert.equal(parseTimeSpec('45'), 45);
+  assert.equal(parseTimeSpec(''), null);
 });

@@ -3,7 +3,8 @@
 // namespace) so it runs unchanged in Firefox, Safari, and Node tests.
 //
 // Storage layout
-//   storage.local    tsz:cfg     vault id, device id, relay settings, feature toggles (no secrets)
+//   storage.local    tsz:cfg     vault id, device id, relay settings, feature + service toggles,
+//                                user-added instances (no secrets)
 //                    tsz:state   the ledger, AES-GCM sealed (purpose "local")
 //                    tsz:sync    relay bookkeeping (etags seen, last upload hash, last error)
 //   storage.session  tsz:keys    derived key material while unlocked (memory only, gone on browser quit)
@@ -16,6 +17,11 @@ import {
   KINDS, emptyState, forget, listLive, mergeInto, progressFor, recordProgress, recordSearch, stats,
 } from '../core/model.js';
 import { RelayClient, RelayError, normalizeRelayUrl, syncOnce } from '../core/sync.js';
+import {
+  INSTANCE_TYPES, SERVICES, VIDEO, instancePattern, normalizeInstanceUrl, resolveServices, searchServiceBySrc,
+  serviceById,
+} from '../core/services.js';
+import { toUrl } from '../core/parse.js';
 
 const K = { cfg: 'tsz:cfg', state: 'tsz:state', sync: 'tsz:sync', keys: 'tsz:keys', pending: 'tsz:pending' };
 
@@ -29,7 +35,9 @@ const RESUME_PULL_TIMEOUT_MS = 2500;
 const ALARM = 'tsz-sync';
 
 export const DEFAULT_FEATURES = Object.freeze({ recording: true, resume: true, badges: true, searches: true });
-const CONTENT_SCRIPT_TYPES = new Set(['progress', 'search', 'getResume', 'getMany', 'features']);
+const CONTENT_SCRIPT_TYPES = new Set(['progress', 'search', 'getResume', 'getMany', 'features', 'instance']);
+const INSTANCE_SCRIPT_PREFIX = 'tsz-inst-';
+const MAX_INSTANCES = 32;
 
 export class UserError extends Error {}
 
@@ -49,6 +57,7 @@ export function createBackground(api, opts = {}) {
   let persistTimer = null;
   let syncTimer = null;
   let syncing = null;
+  let scriptsSynced = false;
 
   // ---------------------------------------------------------------- storage
 
@@ -120,6 +129,10 @@ export function createBackground(api, opts = {}) {
   function ensureLoaded() {
     loading ??= (async () => {
       cfg = (await getLocal(K.cfg)) || null;
+      if (!scriptsSynced) {
+        scriptsSynced = true;
+        await syncInstanceScriptsQuietly();
+      }
       if (!cfg || vault) return;
       const keys = await getKeys();
       if (!keys) return;
@@ -157,6 +170,78 @@ export function createBackground(api, opts = {}) {
 
   function features() {
     return { ...DEFAULT_FEATURES, ...(cfg?.features || {}) };
+  }
+
+  function services() {
+    return resolveServices(cfg?.services);
+  }
+
+  // ---------------------------------------------------------------- who may record what
+  //
+  // Every event from a content script is checked against the page that sent it:
+  // the service must be switched on, the sending page must belong to that
+  // service, and the key must be in that service's namespace. A script running
+  // on one site can't write history for another.
+
+  function instanceForUrl(url) {
+    return url && (cfg?.instances || []).find((i) => i.origin === url.origin) || null;
+  }
+
+  /** The key prefix this sender may read/write for videos, or null if it may not. */
+  function videoScope(msg, sender) {
+    const url = toUrl(sender.url);
+    if (!url || !cfg) return null;
+    if (msg.service === 'instance') {
+      const inst = instanceForUrl(url);
+      const type = inst && INSTANCE_TYPES[inst.type];
+      return inst?.enabled && type?.video ? type.keyPrefix(url.host) : null;
+    }
+    const svc = serviceById(msg.service);
+    if (!svc || svc.kind !== VIDEO || !services()[svc.id] || !svc.host.test(url.hostname)) return null;
+    return svc.keyPrefix;
+  }
+
+  function searchAllowed(src, sender) {
+    const url = toUrl(sender.url);
+    if (!url || !cfg || typeof src !== 'string') return false;
+    const svc = searchServiceBySrc(src);
+    if (svc) return services()[svc.id] && svc.host.test(url.hostname);
+    const inst = instanceForUrl(url);
+    return !!inst?.enabled && src === `${inst.type}:${url.host}`;
+  }
+
+  // ---------------------------------------------------------------- instances (Firefox)
+  //
+  // Self-hosted services live on domains we can't know in advance, so their
+  // content script is registered at runtime, only for origins the user added
+  // and granted access to. Needs scripting.registerContentScripts and optional
+  // host permissions; browsers without them simply don't offer instances.
+
+  const instancesSupported = () => !!(api.scripting?.registerContentScripts && api.permissions?.contains);
+
+  async function syncInstanceScripts() {
+    if (!instancesSupported()) return;
+    const registered = await api.scripting.getRegisteredContentScripts();
+    const ours = registered.filter((r) => r.id.startsWith(INSTANCE_SCRIPT_PREFIX)).map((r) => r.id);
+    if (ours.length) await api.scripting.unregisterContentScripts({ ids: ours });
+    const wanted = [];
+    for (const inst of cfg?.instances || []) {
+      if (!inst.enabled) continue;
+      const pattern = instancePattern(inst.origin);
+      if (!(await api.permissions.contains({ origins: [pattern] }))) continue;
+      wanted.push({
+        id: INSTANCE_SCRIPT_PREFIX + inst.origin.replace(/[^a-z0-9]/gi, '-'),
+        matches: [pattern],
+        js: ['content/instance.js'],
+        runAt: 'document_end',
+        persistAcrossSessions: true,
+      });
+    }
+    if (wanted.length) await api.scripting.registerContentScripts(wanted);
+  }
+
+  function syncInstanceScriptsQuietly() {
+    return syncInstanceScripts().catch((e) => console.warn('[tsuzuki] instance scripts', e));
   }
 
   // ---------------------------------------------------------------- events
@@ -384,6 +469,7 @@ export function createBackground(api, opts = {}) {
     await setKeys(null);
     await setPending([]);
     await local.remove([K.cfg, K.state, K.sync]);
+    await syncInstanceScriptsQuietly();
     return { ok: true, relayError };
   }
 
@@ -402,7 +488,10 @@ export function createBackground(api, opts = {}) {
         relayUrl: cfg.relayUrl,
         hasRegisterToken: !!cfg.registerToken,
         features: features(),
+        services: services(),
+        instances: cfg.instances || [],
       },
+      instancesSupported: instancesSupported(),
       stats: vault ? stats(vault.state) : null,
       sync: meta && {
         lastSyncAt: meta.lastSyncAt || null,
@@ -421,18 +510,33 @@ export function createBackground(api, opts = {}) {
 
   const handlers = {
     // Content scripts
-    features: async () => ({ ...features(), unlocked: !!vault }),
-    progress: (m) => captureEvent({ type: 'progress', key: m.key, t: m.t, dur: m.dur, title: m.title, ch: m.ch, ended: !!m.ended }),
-    search: (m) => captureEvent({ type: 'search', q: m.q, src: m.src }),
-    getResume: async (m) => {
-      if (!vault || !features().resume) return null;
+    features: async () => ({ ...features(), unlocked: !!vault, services: services() }),
+    instance: async (m, sender) => {
+      const inst = instanceForUrl(toUrl(sender.url));
+      return inst ? { type: inst.type, enabled: inst.enabled, features: { ...features(), unlocked: !!vault } } : null;
+    },
+    progress: (m, sender) => {
+      if (!cfg) return { ok: false, reason: 'not-configured' };
+      const prefix = videoScope(m, sender);
+      if (!prefix || typeof m.key !== 'string' || !m.key.startsWith(prefix)) return { ok: false, reason: 'not-allowed' };
+      return captureEvent({ type: 'progress', key: m.key, t: m.t, dur: m.dur, title: m.title, ch: m.ch, ended: !!m.ended });
+    },
+    search: (m, sender) => {
+      if (!cfg) return { ok: false, reason: 'not-configured' };
+      if (!searchAllowed(m.src, sender)) return { ok: false, reason: 'not-allowed' };
+      return captureEvent({ type: 'search', q: m.q, src: m.src });
+    },
+    getResume: async (m, sender) => {
+      const prefix = videoScope(m, sender);
+      if (!vault || !features().resume || !prefix || !String(m.key).startsWith(prefix)) return null;
       await freshPull();
       const rec = vault?.state.resume[m.key];
       return rec && !rec.del ? { t: rec.t, dur: rec.dur } : null;
     },
-    getMany: async (m) => {
-      if (!vault || !features().badges || !Array.isArray(m.keys)) return {};
-      return progressFor(vault.state, m.keys.slice(0, 500));
+    getMany: async (m, sender) => {
+      const prefix = videoScope(m, sender);
+      if (!vault || !features().badges || !prefix || !Array.isArray(m.keys)) return {};
+      return progressFor(vault.state, m.keys.slice(0, 500).filter((k) => typeof k === 'string' && k.startsWith(prefix)));
     },
 
     // Extension pages only
@@ -459,6 +563,7 @@ export function createBackground(api, opts = {}) {
       if (!cfg) throw new UserError('No vault set up yet.');
       const next = { ...cfg };
       if (m.features) next.features = { ...features(), ...pick(m.features, Object.keys(DEFAULT_FEATURES)) };
+      if (m.services) next.services = { ...services(), ...pick(m.services, SERVICES.map((x) => x.id)) };
       if (typeof m.deviceName === 'string') next.deviceName = m.deviceName.slice(0, 60) || cfg.deviceName;
       if (typeof m.relayUrl === 'string') {
         const relay = m.relayUrl ? normalizeRelayUrl(m.relayUrl) : '';
@@ -467,6 +572,44 @@ export function createBackground(api, opts = {}) {
       }
       if (typeof m.registerToken === 'string') next.registerToken = m.registerToken;
       await saveCfg(next);
+      return status();
+    },
+    addInstance: async (m) => {
+      if (!cfg) throw new UserError('No vault set up yet.');
+      if (!instancesSupported()) throw new UserError("This browser can't run Tsuzuki on custom sites yet.");
+      if (!INSTANCE_TYPES[m.instanceType]) throw new UserError('Unknown instance type.');
+      let parsed;
+      try {
+        parsed = normalizeInstanceUrl(m.url);
+      } catch (e) {
+        throw new UserError(e.message);
+      }
+      const list = (cfg.instances || []).filter((i) => i.origin !== parsed.origin);
+      if (list.length >= MAX_INSTANCES) throw new UserError(`At most ${MAX_INSTANCES} instances.`);
+      if (!(await api.permissions.contains({ origins: [parsed.pattern] }))) {
+        throw new UserError(`Tsuzuki needs permission to run on ${parsed.host}.`);
+      }
+      list.push({ origin: parsed.origin, type: m.instanceType, enabled: true, addedAt: now() });
+      await saveCfg({ ...cfg, instances: list });
+      await syncInstanceScriptsQuietly();
+      return status();
+    },
+    setInstance: async (m) => {
+      if (!cfg) throw new UserError('No vault set up yet.');
+      const list = (cfg.instances || []).map((i) => (i.origin === m.origin ? { ...i, enabled: !!m.enabled } : i));
+      await saveCfg({ ...cfg, instances: list });
+      await syncInstanceScriptsQuietly();
+      return status();
+    },
+    removeInstance: async (m) => {
+      if (!cfg) throw new UserError('No vault set up yet.');
+      const inst = (cfg.instances || []).find((i) => i.origin === m.origin);
+      if (!inst) return status();
+      await saveCfg({ ...cfg, instances: cfg.instances.filter((i) => i !== inst) });
+      await syncInstanceScriptsQuietly();
+      try {
+        await api.permissions?.remove?.({ origins: [instancePattern(inst.origin)] });
+      } catch {}
       return status();
     },
     syncNow: async () => {
@@ -498,7 +641,7 @@ export function createBackground(api, opts = {}) {
     const fromExtensionPage = typeof sender.url === 'string' && sender.url.startsWith(api.runtime.getURL(''));
     if (!fromExtensionPage && !CONTENT_SCRIPT_TYPES.has(msg.type)) throw new UserError('not allowed');
     await ensureLoaded();
-    return handlers[msg.type](msg);
+    return handlers[msg.type](msg, sender);
   }
 
   // ---------------------------------------------------------------- wiring

@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Search-engine content script: notes the query on results pages.
-// Only reads the page URL; never touches the page itself.
+// Content script for the built-in search engines. Does nothing unless that
+// engine is switched on.
 
-import { searchFromUrl } from '../core/parse.js';
+import { searchFromUrl, servicesForUrl, SEARCH } from '../core/services.js';
+import { startSearchCapture } from './capture.js';
 import { isPrivate, rpc } from './rpc.js';
 
-let last = '';
-
-function check() {
-  const s = searchFromUrl(location.href);
-  if (!s) return;
-  const sig = `${s.src}\u0000${s.q}`;
-  if (sig === last) return;
-  last = sig;
-  rpc({ type: 'search', q: s.q, src: s.src });
+async function init() {
+  const engine = servicesForUrl(location.href).find((s) => s.kind === SEARCH);
+  if (!engine || isPrivate) return;
+  const f = await rpc({ type: 'features' });
+  if (!f || !f.recording || !f.searches || !f.services[engine.id]) return;
+  startSearchCapture((href) => {
+    const r = searchFromUrl(href);
+    return r?.service === engine.id ? r : null;
+  });
 }
 
-if (!isPrivate) {
-  check();
-  // Some engines change the query in place (pushState) without a full page load.
-  setInterval(check, 1500);
-  window.addEventListener('popstate', check);
-}
+init();

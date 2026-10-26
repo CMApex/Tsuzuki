@@ -7,6 +7,21 @@
 3. Sync across browsers and OSes (Firefox ⇄ Safari) without trusting the sync server.
 4. Never build a recommendation engine. The ledger is shown newest-first, filterable, and that's it.
 
+## Services
+
+`extension/src/core/services.js` is the single table of supported sites. For each video service: host pattern, manifest match patterns, how to turn a URL into a key, the key namespace (`yt:`, `nebula:`, `twitch:`, `vimeo:`), and a thumbnail selector. For each search engine: host, results path, query parameter, an optional search-box selector for engines that POST the query (DuckDuckGo HTML/Lite, Startpage, SearXNG), and the URL used by "search again on…". The manifest's content scripts are generated from it at build time.
+
+Per-service toggles live in `cfg.services`; anything unset takes the service's default (the original services default on, newer ones off). Content scripts ask the background for the toggles and exit if theirs is off. The background also enforces them independently, and checks every event against its sender:
+
+- the sending page's host must belong to the claimed service (or be a registered, enabled instance);
+- a video key must be in that service's namespace (`pt:<host>:` for a PeerTube instance, `yt:` for Invidious/Piped);
+- a search `src` must be the engine the page belongs to (`searxng:<host>` etc. for instances);
+- `getMany` (thumbnail bars) only answers for keys in the page's own namespace.
+
+So a script on one site can neither write nor probe history for another.
+
+**Instances** (Firefox/Zen): self-hosted servers live on unknown domains, so the user adds them by URL. The popup requests that one origin's host permission (`optional_host_permissions`) straight from the click, then the background registers `content/instance.js` for it with `scripting.registerContentScripts`. Disabling an instance unregisters its script; removing it also hands the permission back. Safari lacks runtime registration, so the popup explains instead of offering it.
+
 ## The ledger
 
 Three maps of last-writer-wins registers (`extension/src/core/model.js`):
@@ -86,6 +101,7 @@ Private windows: Firefox gets `incognito: not_allowed`; content scripts also che
 
 - Passphrase change (needs a re-key: new vault id + re-upload from one device, others re-join).
 - Tombstone GC.
-- More sites: Twitch VODs, Nebula, PeerTube, podcasts. The model's keys are already namespaced (`yt:`).
+- More sites (Dailymotion, Odysee, podcasts): add a row to `services.js` and, if needed, an adapter.
+- Instances in Safari, if it gains runtime content-script registration.
 - The YouTube app on iOS is invisible to a Safari extension.
 - A desktop companion (Rust) that reads the relay blobs with the passphrase and browses the whole ledger offline.

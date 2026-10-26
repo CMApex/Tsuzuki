@@ -12,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBackground } from '../extension/src/background/core.js';
 import { stableStringify } from '../extension/src/core/model.js';
-import { fakeBrowser, PAGE, CONTENT } from './helpers/fake-browser.mjs';
+import { fakeBrowser, PAGE, CONTENT, contentCall } from './helpers/fake-browser.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BIN = ['release', 'debug'].map((p) => join(root, 'relay/target', p, 'tsuzuki-relay')).find(existsSync);
@@ -57,7 +57,7 @@ function device(clockStart) {
     bg,
     tick: (ms) => (t += ms),
     page: (type, extra = {}) => bg.handle({ type, ...extra }, PAGE),
-    content: (type, extra = {}) => bg.handle({ type, ...extra }, CONTENT),
+    content: (type, extra = {}, url) => contentCall(bg, type, extra, url),
   };
 }
 

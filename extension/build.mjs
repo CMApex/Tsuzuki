@@ -9,6 +9,7 @@ import { build, context } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { manifestContentScripts } from './src/core/services.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -18,8 +19,6 @@ const args = process.argv.slice(2);
 const watch = args.includes('--watch');
 const targets = args.filter((a) => !a.startsWith('--'));
 const TARGETS = targets.length ? targets : ['firefox', 'safari'];
-
-const GOOGLE = ['com', 'co.uk', 'ca', 'com.au', 'de', 'fr', 'co.jp', 'es', 'it', 'nl', 'com.br', 'co.in'];
 
 function manifest(target) {
   const m = {
@@ -36,30 +35,15 @@ function manifest(target) {
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' },
     },
     options_ui: { page: 'ui/options.html', open_in_tab: true },
-    content_scripts: [
-      {
-        matches: ['*://www.youtube.com/*', '*://m.youtube.com/*', '*://music.youtube.com/*'],
-        js: ['content/youtube.js'],
-        run_at: 'document_idle',
-      },
-      {
-        matches: [
-          ...GOOGLE.map((tld) => `*://www.google.${tld}/search*`),
-          '*://duckduckgo.com/*',
-          '*://html.duckduckgo.com/*',
-          '*://www.bing.com/search*',
-          '*://search.brave.com/search*',
-          '*://kagi.com/search*',
-        ],
-        js: ['content/search.js'],
-        run_at: 'document_start',
-      },
-    ],
+    // Generated from extension/src/core/services.js. Scripts on switched-off services exit immediately.
+    content_scripts: manifestContentScripts(),
   };
 
   if (target === 'firefox') {
     m.background = { scripts: ['background.js'] };
-    m.permissions.push('unlimitedStorage');
+    m.permissions.push('unlimitedStorage', 'scripting');
+    // User-added instances (Invidious, Piped, PeerTube, SearXNG): access is requested per origin, at runtime.
+    m.optional_host_permissions = ['*://*/*'];
     m.incognito = 'not_allowed';
     m.browser_specific_settings = {
       gecko: {
@@ -80,8 +64,9 @@ function manifest(target) {
 
 const entryPoints = {
   background: join(here, 'src/background/index.js'),
-  'content/youtube': join(here, 'src/content/youtube.js'),
+  'content/video': join(here, 'src/content/video.js'),
   'content/search': join(here, 'src/content/search.js'),
+  'content/instance': join(here, 'src/content/instance.js'),
   'ui/app': join(here, 'src/ui/app.js'),
 };
 
