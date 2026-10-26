@@ -546,7 +546,7 @@ function startHints(newTab) {
   const layer = h('div', { class: 'hint-layer', 'aria-hidden': 'true' });
   const items = targets.map((t, i) => {
     const r = t.getBoundingClientRect();
-    const tag = h('span', { class: 'hint', text: labels[i].toUpperCase(), style: `left:${Math.max(0, r.left)}px;top:${Math.max(0, r.top)}px` });
+    const tag = h('span', { class: 'link-hint', text: labels[i].toUpperCase(), style: `left:${Math.max(0, r.left)}px;top:${Math.max(0, r.top)}px` });
     layer.append(tag);
     return { el: t, label: labels[i], tag };
   });

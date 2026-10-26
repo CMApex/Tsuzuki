@@ -221,8 +221,10 @@ test('home: built-in vim-style keys (Vimium cannot run on extension pages)', asy
 
     // f shows link hints; typing a label activates it.
     press('f');
-    const tags = $$('.hint-layer .hint');
+    const tags = $$('.hint-layer .link-hint');
     assert.ok(tags.length > 3, 'hints on links and buttons');
+    // Regression: the help line under the search box is also class "hint"; it must not get link-hint styling.
+    assert.ok(!$('p.hint').classList.contains('link-hint'));
     const cardHint = tags.find((t, i) => {
       const card = $('.card-v');
       return t.textContent && i === [...doc.querySelectorAll('a[href], button, select, input')].indexOf(card);
