@@ -5,7 +5,7 @@
 
 import { formatTime } from '../core/parse.js';
 import { labelForKey, labelForSrc, linkForKey, parseBang, searchLinkFor, searchTargets } from '../core/services.js';
-import { ago, api, brand, call, field, h, input } from './lib.js';
+import { ago, api, applyAppearance, brand, call, field, h, input } from './lib.js';
 
 const root = document.getElementById('app');
 // Same-tab navigation (this page is meant to be a home / new-tab page). Overridable for tests.
@@ -460,6 +460,7 @@ async function start() {
     return;
   }
   const s = state.status;
+  applyAppearance(s.cfg?.appearance);
   if (!s.configured) {
     return gate('Set up Tsuzuki', [
       h('p', { text: 'Create a vault (or join one from another device) and this page fills with everything you were in the middle of.' }),

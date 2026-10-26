@@ -72,6 +72,7 @@ const entryPoints = {
   'content/instance': join(here, 'src/content/instance.js'),
   'ui/app': join(here, 'src/ui/app.js'),
   'ui/home': join(here, 'src/ui/home.js'),
+  'ui/boot': join(here, 'src/ui/boot.js'),
 };
 
 async function buildTarget(target) {
@@ -91,7 +92,7 @@ async function buildTarget(target) {
   };
 
   await cp(join(here, 'static/icons'), join(out, 'icons'), { recursive: true });
-  for (const f of ['popup.html', 'options.html', 'home.html', 'app.css', 'home.css']) {
+  for (const f of ['popup.html', 'options.html', 'home.html', 'app.css', 'home.css', 'themes.css']) {
     await cp(join(here, 'src/ui', f), join(out, 'ui', f));
   }
   await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest(target), null, 2) + '\n');

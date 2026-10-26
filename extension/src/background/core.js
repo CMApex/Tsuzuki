@@ -22,6 +22,7 @@ import {
   serviceById,
 } from '../core/services.js';
 import { toUrl } from '../core/parse.js';
+import { THEME_IDS, checkCustomCss, normalizeAppearance } from '../core/theme.js';
 
 const K = { cfg: 'tsz:cfg', state: 'tsz:state', sync: 'tsz:sync', keys: 'tsz:keys', pending: 'tsz:pending' };
 
@@ -497,6 +498,7 @@ export function createBackground(api, opts = {}) {
         services: services(),
         instances: cfg.instances || [],
         home: homePrefs(),
+        appearance: normalizeAppearance(cfg.appearance),
       },
       instancesSupported: instancesSupported(),
       stats: vault ? stats(vault.state) : null,
@@ -571,6 +573,19 @@ export function createBackground(api, opts = {}) {
       const next = { ...cfg };
       if (m.features) next.features = { ...features(), ...pick(m.features, Object.keys(DEFAULT_FEATURES)) };
       if (m.services) next.services = { ...services(), ...pick(m.services, SERVICES.map((x) => x.id)) };
+      if (m.appearance) {
+        const next_ = { ...normalizeAppearance(cfg.appearance) };
+        if (m.appearance.theme !== undefined) {
+          if (!THEME_IDS.includes(m.appearance.theme)) throw new UserError('Unknown theme.');
+          next_.theme = m.appearance.theme;
+        }
+        if (m.appearance.customCss !== undefined) {
+          const problem = checkCustomCss(m.appearance.customCss);
+          if (problem) throw new UserError(problem);
+          next_.customCss = m.appearance.customCss;
+        }
+        next.appearance = next_;
+      }
       if (m.home) {
         next.home = { ...homePrefs(), ...pick(m.home, ['thumbs']) };
         if (typeof m.home.engine === 'string' && m.home.engine.length <= 100) next.home.engine = m.home.engine;

@@ -1,7 +1,13 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* 続き Tsuzuki — washi paper, sumi ink, a line of vermilion. */
 
-:root {
+/* Themes: <html data-theme="sumi|washi|aero|aero-night">. No attribute = "auto":
+   washi in light mode, sumi in dark mode. Aero treatments live in themes.css.
+   Theme selectors use :where() so they're never more specific than plain :root
+   or .card. That way user custom CSS, which loads last, always wins. */
+
+:root,
+:root:where([data-theme="washi"]) {
   --paper: #f6f1e7;
   --paper-2: #efe8da;
   --card: #fbf8f2;
@@ -12,6 +18,8 @@
   --shu: #d4492a;
   --shu-soft: rgba(212, 73, 42, 0.12);
   --ok: #3f7d58;
+  --field: var(--paper);
+  --page-bg: var(--paper);
   --radius: 10px;
   --serif: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Shippori Mincho", Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -19,7 +27,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:where(:not([data-theme])) {
     --paper: #16130f;
     --paper-2: #1e1a15;
     --card: #221d17;
@@ -34,17 +42,37 @@
   }
 }
 
+:root:where([data-theme="sumi"]) {
+  --paper: #16130f;
+  --paper-2: #1e1a15;
+  --card: #221d17;
+  --ink: #efe7d9;
+  --ink-2: #b9ae9c;
+  --ink-3: #857b6c;
+  --rule: #332c23;
+  --shu: #ef6a4c;
+  --shu-soft: rgba(239, 106, 76, 0.16);
+  --ok: #74b98d;
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   background: var(--paper);
+}
+
+body {
+  background: var(--page-bg);
+  background-attachment: fixed;
   color: var(--ink);
   font: 14px/1.45 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
 
 body[data-mode="popup"] { width: min(400px, 100vw); min-height: 420px; }
+body:not([data-mode="popup"]) { min-height: 100vh; }
 body[data-mode="page"] main { max-width: 680px; margin: 0 auto; padding: 24px 16px 64px; }
 body[data-mode="popup"] main { padding: 14px 14px 18px; }
 
@@ -121,10 +149,10 @@ button, input { font: inherit; color: inherit; }
 
 label.field { display: block; margin-bottom: 10px; }
 label.field span { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
-label.field input {
-  width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper);
+label.field input, label.field textarea, label.field select {
+  width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--field); color: var(--ink);
 }
-label.field input:focus { outline: none; border-color: var(--shu); }
+label.field input:focus, label.field textarea:focus { outline: none; border-color: var(--shu); }
 label.field small { display: block; color: var(--ink-3); font-size: 11.5px; margin-top: 3px; }
 
 .toggle { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; cursor: pointer; }
@@ -181,8 +209,25 @@ footer { text-align: center; color: var(--ink-3); font-size: 11px; margin-top: 1
 .item.inst { grid-template-columns: 1fr auto; align-items: center; }
 .item.inst .toggle { padding: 0; }
 .add-inst { margin-top: 10px; flex-wrap: nowrap; }
-.add-inst input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); }
+.add-inst input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--field); }
 .add-inst select, select.again {
-  font: inherit; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  font: inherit; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--rule); background: var(--field); color: var(--ink);
 }
 select.again { grid-column: 1 / -1; justify-self: start; margin-top: 6px; padding: 3px 6px; font-size: 12px; color: var(--ink-2); }
+
+/* ---- appearance ------------------------------------------------------- */
+
+.themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.theme-pick {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 999px; background: var(--field); color: var(--ink); font-size: 13px;
+}
+.theme-pick .swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); box-shadow: inset 0 1px 2px rgba(255,255,255,.4); }
+.theme-pick[aria-checked="true"] { border-color: var(--shu); box-shadow: 0 0 0 3px var(--shu-soft); }
+.theme-pick:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+.css-edit {
+  width: 100%; margin: 6px 0; padding: 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--field);
+  color: var(--ink); font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; resize: vertical; tab-size: 2;
+}
+.css-edit:focus { outline: none; border-color: var(--shu); }
+.vars code { font: 11.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: nowrap; background: var(--paper-2); padding: 0 4px; border-radius: 4px; }

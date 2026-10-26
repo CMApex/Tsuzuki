@@ -97,6 +97,12 @@ Things that would weaken this, deliberately not done: storing the key in `storag
 
 Private windows: Firefox gets `incognito: not_allowed`; content scripts also check `inIncognitoContext` and do nothing.
 
+## Themes and custom CSS
+
+Theme tokens are CSS variables. Theme selectors are wrapped in `:where()` so they are never more specific than `:root` or `.card`. User CSS is injected last (as a `<style>` element's text, never markup), so it always wins ties. The last-used appearance is cached in the extension origin's `localStorage` and applied by `ui/boot.js` in `<head>`, so pages don't flash the default theme.
+
+Custom CSS runs on pages that display the decrypted ledger, so it must not make network requests: attribute selectors plus `url()` would turn a theme into a history beacon. `core/theme.js` strips comments, decodes CSS escapes, and then rejects `@import`, `@namespace`, any `url()` that isn't `data:`, `image-set()`/`image()`/`cross-fade()`/`element()`/`src()`, and `attr(… url)`. The background re-checks on save, and stored CSS that fails the check is ignored.
+
 ## Known gaps / next
 
 - Passphrase change (needs a re-key: new vault id + re-upload from one device, others re-join).

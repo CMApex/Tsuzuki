@@ -255,3 +255,15 @@ test('without scripting APIs (Safari), instances are simply unavailable', async 
   assert.equal((await page('status')).instancesSupported, false);
   await assert.rejects(page('addInstance', { url: 'yewtu.be', instanceType: 'invidious' }), /can't run Tsuzuki on custom sites/);
 });
+
+test('appearance: themes and custom CSS are validated and stored', async () => {
+  const { page } = setup({});
+  await page('create', { passphrase: PASS });
+  assert.deepEqual((await page('status')).cfg.appearance, { theme: 'auto', customCss: '' });
+  await page('settings', { appearance: { theme: 'aero-night' } });
+  await page('settings', { appearance: { customCss: ':root { --shu: hotpink }' } });
+  assert.deepEqual((await page('status')).cfg.appearance, { theme: 'aero-night', customCss: ':root { --shu: hotpink }' });
+  await assert.rejects(page('settings', { appearance: { theme: 'geocities' } }), /Unknown theme/);
+  await assert.rejects(page('settings', { appearance: { customCss: 'a{background:url(https://evil.example)}' } }), /network/);
+  assert.equal((await page('status')).cfg.appearance.customCss, ':root { --shu: hotpink }', 'rejected CSS leaves the old one');
+});

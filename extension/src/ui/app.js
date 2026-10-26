@@ -7,7 +7,8 @@ import {
   INSTANCE_TYPES, SEARCH, SERVICES, VIDEO, labelForKey, labelForSrc, linkForKey, normalizeInstanceUrl, searchLinkFor,
   searchTargets,
 } from '../core/services.js';
-import { ago, api, armedButton, brand, call, field, h, input } from './lib.js';
+import { ago, api, applyAppearance, armedButton, brand, call, field, h, input } from './lib.js';
+import { THEMES } from '../core/theme.js';
 
 const isPopup = document.body.dataset.mode === 'popup';
 const root = document.getElementById('app');
@@ -474,6 +475,7 @@ function settingsView() {
       toggle('badges', 'Progress bars on thumbnails', 'Drawn privately inside the page; YouTube cannot read them.'),
       toggle('searches', 'Search history', 'Queries on the search engines switched on below.'),
     ),
+    appearanceCard(s),
     servicesCard(s),
     instancesCard(s),
     h(
@@ -567,6 +569,7 @@ function render() {
 async function refresh() {
   try {
     ui.status = await call('status');
+    applyAppearance(ui.status.cfg?.appearance);
   } catch (e) {
     ui.status = null;
     ui.notice = { kind: 'err', text: e.message };
@@ -677,4 +680,95 @@ function instancesCard(s) {
     ),
   );
   return card;
+}
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+
+const THEME_SWATCH = {
+  auto: 'linear-gradient(135deg, #f6f1e7 50%, #16130f 50%)',
+  sumi: 'radial-gradient(circle at 70% 30%, #ef6a4c 0 18%, #16130f 19%)',
+  washi: 'radial-gradient(circle at 70% 30%, #d4492a 0 18%, #f6f1e7 19%)',
+  aero: 'radial-gradient(circle at 35% 30%, #fff 0 14%, rgba(255,255,255,0) 15%), linear-gradient(to bottom, #3fb4ef, #d6f1fc 60%, #6fcf4b)',
+  'aero-night': 'radial-gradient(circle at 35% 30%, rgba(160,230,255,.6) 0 12%, rgba(0,0,0,0) 13%), linear-gradient(to bottom, #04101f, #0a2e4f 60%, #1e8cff)',
+};
+
+const CSS_EXAMPLE = `/* Example: a soft lavender take on Washi */
+:root {
+  --paper: #f3effa;
+  --card: #fbf9ff;
+  --ink: #2a2140;
+  --shu: #7b5cd6;
+  --shu-soft: rgba(123, 92, 214, .14);
+}`;
+
+function appearanceCard(s) {
+  const current = s.cfg.appearance;
+  const themes = h(
+    'div',
+    { class: 'themes', role: 'radiogroup', 'aria-label': 'Theme' },
+    THEMES.map((t) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'theme-pick',
+          role: 'radio',
+          'aria-checked': String(current.theme === t.id),
+          title: t.hint,
+          onclick: () =>
+            act(null, async () => {
+              await call('settings', { appearance: { theme: t.id } });
+              ui.notice = { kind: 'ok', text: `${t.label} theme on.` };
+            }),
+        },
+        h('span', { class: 'swatch', style: `background:${THEME_SWATCH[t.id]}` }),
+        h('span', { text: t.label }),
+      ),
+    ),
+  );
+
+  const css = h('textarea', {
+    class: 'css-edit',
+    rows: '8',
+    spellcheck: 'false',
+    autocomplete: 'off',
+    placeholder: CSS_EXAMPLE,
+    'aria-label': 'Custom CSS',
+  });
+  css.value = current.customCss;
+  const save = h('button', { class: 'btn', type: 'button', text: 'Apply CSS' });
+  save.addEventListener('click', () =>
+    act(save, async () => {
+      await call('settings', { appearance: { customCss: css.value } });
+      ui.notice = { kind: 'ok', text: css.value.trim() ? 'Custom CSS applied.' : 'Custom CSS cleared.' };
+    }),
+  );
+  const clear = h('button', {
+    class: 'btn',
+    type: 'button',
+    text: 'Clear',
+    onclick: () => {
+      css.value = '';
+      save.click();
+    },
+  });
+
+  return h(
+    'div',
+    { class: 'card' },
+    h('h2', { text: 'Appearance' }),
+    themes,
+    h('h3', { text: 'Custom CSS' }),
+    h(
+      'p',
+      { class: 'muted vars' },
+      'Applied on top of the theme, on the popup, settings and home page. Easiest start: override these variables: ',
+      ['--paper', '--paper-2', '--card', '--field', '--ink', '--ink-2', '--ink-3', '--rule', '--shu', '--shu-soft', '--page-bg', '--sans', '--serif'].flatMap((v, i) => [i ? ' ' : '', h('code', { text: v })]),
+    ),
+    css,
+    h('p', { class: 'muted', text: 'To protect your history, custom CSS can’t load anything from the network: no @import or url(https://…). Images must be data: URLs.' }),
+    h('div', { class: 'row' }, save, clear),
+  );
 }

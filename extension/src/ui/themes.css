@@ -1,0 +1,165 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Aero themes: glossy, glassy, sky-and-bubbles Frutiger Aero, in day and night.
+   Loaded after app.css / home.css so these treatments win. Custom CSS loads after this. */
+
+/* ---- tokens ------------------------------------------------------------ */
+
+:root:where([data-theme="aero"]) {
+  --paper: #e4f4fd;
+  --paper-2: rgba(255, 255, 255, 0.5);
+  --card: rgba(255, 255, 255, 0.58);
+  --ink: #0b2a44;
+  --ink-2: #2b5878;
+  --ink-3: #5a83a3;
+  --rule: rgba(36, 120, 180, 0.2);
+  --shu: #0f8fd6;
+  --shu-soft: rgba(15, 143, 214, 0.14);
+  --ok: #2b9a47;
+  --field: rgba(255, 255, 255, 0.78);
+  --glass-edge: rgba(255, 255, 255, 0.85);
+  --glass-glow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 8px 28px rgba(16, 92, 146, 0.18);
+  --gloss: linear-gradient(to bottom, rgba(255,255,255,.98) 0%, rgba(255,255,255,.7) 48%, rgba(196,230,250,.7) 52%, rgba(232,247,255,.95) 100%);
+  --gloss-edge: rgba(52, 136, 196, 0.45);
+  --gloss-hot: linear-gradient(to bottom, #8fdcff 0%, #36b0f2 47%, #0f8fd6 53%, #45c0ff 100%);
+  --gloss-hot-edge: #0b78b8;
+  --orb: radial-gradient(circle at 35% 30%, #fff 0 18%, #6fd2ff 40%, #0f8fd6 75%);
+  --sans: "Segoe UI", "Frutiger", "Frutiger Linotype", "Myriad Pro", "Helvetica Neue", system-ui, sans-serif;
+  --serif: "Yu Gothic UI", "Hiragino Sans", "Segoe UI", "Noto Sans JP", sans-serif;
+  --page-bg:
+    radial-gradient(circle at 12% 22%, rgba(255,255,255,.55) 0 3.5%, rgba(255,255,255,0) 3.6%),
+    radial-gradient(circle at 18% 30%, rgba(255,255,255,.4) 0 1.6%, rgba(255,255,255,0) 1.7%),
+    radial-gradient(circle at 84% 16%, rgba(255,255,255,.45) 0 5%, rgba(255,255,255,0) 5.1%),
+    radial-gradient(circle at 90% 26%, rgba(255,255,255,.35) 0 2%, rgba(255,255,255,0) 2.1%),
+    radial-gradient(circle at 70% 8%, rgba(255,255,255,.3) 0 1.2%, rgba(255,255,255,0) 1.3%),
+    radial-gradient(ellipse 70% 30% at 20% 108%, #6fcf4b 0 60%, rgba(111,207,75,0) 61%),
+    radial-gradient(ellipse 80% 34% at 85% 112%, #4fb83a 0 60%, rgba(79,184,58,0) 61%),
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,.7), rgba(255,255,255,0) 70%),
+    linear-gradient(to bottom, #3fb4ef 0%, #8fd6f7 35%, #d6f1fc 62%, #eefaf2 82%, #c9ecaf 100%);
+  color-scheme: light;
+}
+
+:root:where([data-theme="aero-night"]) {
+  --paper: #071425;
+  --paper-2: rgba(255, 255, 255, 0.06);
+  --card: rgba(16, 38, 66, 0.55);
+  --ink: #e4f3ff;
+  --ink-2: #a8cbe8;
+  --ink-3: #6f97bb;
+  --rule: rgba(120, 196, 255, 0.18);
+  --shu: #3fd0ff;
+  --shu-soft: rgba(63, 208, 255, 0.16);
+  --ok: #6fe39b;
+  --field: rgba(4, 18, 36, 0.6);
+  --glass-edge: rgba(140, 214, 255, 0.28);
+  --glass-glow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 32px rgba(0, 0, 0, 0.45);
+  --gloss: linear-gradient(to bottom, rgba(255,255,255,.2) 0%, rgba(255,255,255,.08) 48%, rgba(0,0,0,.12) 52%, rgba(255,255,255,.05) 100%);
+  --gloss-edge: rgba(120, 200, 255, 0.35);
+  --gloss-hot: linear-gradient(to bottom, #7fe6ff 0%, #22b8ec 47%, #0786c2 53%, #2fc8ff 100%);
+  --gloss-hot-edge: #0a6a9c;
+  --orb: radial-gradient(circle at 35% 30%, #fff 0 16%, #63e2ff 40%, #0786c2 78%);
+  --sans: "Segoe UI", "Frutiger", "Frutiger Linotype", "Myriad Pro", "Helvetica Neue", system-ui, sans-serif;
+  --serif: "Yu Gothic UI", "Hiragino Sans", "Segoe UI", "Noto Sans JP", sans-serif;
+  --page-bg:
+    radial-gradient(circle at 14% 24%, rgba(160,230,255,.14) 0 3%, rgba(160,230,255,0) 3.1%),
+    radial-gradient(circle at 86% 18%, rgba(160,230,255,.12) 0 4.5%, rgba(160,230,255,0) 4.6%),
+    radial-gradient(circle at 76% 30%, rgba(160,230,255,.1) 0 1.6%, rgba(160,230,255,0) 1.7%),
+    radial-gradient(ellipse 60% 35% at 25% 10%, rgba(40,200,170,.28), rgba(40,200,170,0) 70%),
+    radial-gradient(ellipse 55% 30% at 80% 5%, rgba(110,90,255,.25), rgba(110,90,255,0) 70%),
+    radial-gradient(ellipse 70% 30% at 50% 105%, rgba(30,140,255,.3), rgba(30,140,255,0) 70%),
+    linear-gradient(to bottom, #04101f 0%, #082343 45%, #0a2e4f 75%, #061a30 100%);
+  color-scheme: dark;
+}
+
+/* ---- glass surfaces ---------------------------------------------------- */
+
+:where(:root[data-theme^="aero"]) .card,
+:where(:root[data-theme^="aero"]) .card-v,
+:where(:root[data-theme^="aero"]) .qbox,
+:where(:root[data-theme^="aero"]) .matches,
+:where(:root[data-theme^="aero"]) .notice {
+  background: var(--card);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-glow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+:where(:root[data-theme^="aero"]) .card,
+:where(:root[data-theme^="aero"]) .qbox { border-radius: 16px; }
+:where(:root[data-theme^="aero"]) .card-v { border-radius: 14px; }
+:where(:root[data-theme^="aero"]) .card-v:hover { border-color: var(--shu); box-shadow: var(--glass-glow), 0 0 0 3px var(--shu-soft); }
+:where(:root[data-theme^="aero"]) .qbox:focus-within { border-color: var(--shu); box-shadow: var(--glass-glow), 0 0 0 4px var(--shu-soft); }
+:where(:root[data-theme^="aero"]) .item { border-bottom-color: var(--rule); }
+:where(:root[data-theme^="aero"]) .notice.err { color: #c0392b; }
+:where(:root[data-theme="aero-night"]) .notice.err { color: #ff8a7a; }
+
+/* ---- glossy controls --------------------------------------------------- */
+
+:where(:root[data-theme^="aero"]) .btn,
+:where(:root[data-theme^="aero"]) .icon-btn,
+:where(:root[data-theme^="aero"]) .engine,
+:where(:root[data-theme^="aero"]) .chip,
+:where(:root[data-theme^="aero"]) .seg,
+:where(:root[data-theme^="aero"]) select.again,
+:where(:root[data-theme^="aero"]) .add-inst select {
+  background: var(--gloss);
+  border: 1px solid var(--gloss-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(10, 70, 120, 0.15);
+  color: var(--ink);
+}
+:where(:root[data-theme^="aero"]) .btn,
+:where(:root[data-theme^="aero"]) .icon-btn,
+:where(:root[data-theme^="aero"]) .engine,
+:where(:root[data-theme^="aero"]) .chip { border-radius: 999px; }
+:where(:root[data-theme="aero"]) .btn,
+:where(:root[data-theme="aero"]) .icon-btn,
+:where(:root[data-theme="aero"]) .engine,
+:where(:root[data-theme="aero"]) .chip { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8); }
+
+:where(:root[data-theme^="aero"]) .btn.primary,
+:where(:root[data-theme^="aero"]) .qbox .go,
+:where(:root[data-theme^="aero"]) .engine[aria-pressed="true"],
+:where(:root[data-theme^="aero"]) .chip:has(input:checked),
+:where(:root[data-theme^="aero"]) .seg button[aria-pressed="true"] {
+  background: var(--gloss-hot);
+  border: 1px solid var(--gloss-hot-edge);
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 40, 80, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 8px rgba(15, 143, 214, 0.35);
+}
+:where(:root[data-theme^="aero"]) .btn.primary:hover,
+:where(:root[data-theme^="aero"]) .qbox .go:hover { filter: brightness(1.08) saturate(1.1); background: var(--gloss-hot); }
+:where(:root[data-theme^="aero"]) .qbox .go { border-radius: 999px; }
+:where(:root[data-theme^="aero"]) .seg { border-radius: 999px; }
+:where(:root[data-theme^="aero"]) .seg button { border-radius: 999px; }
+:where(:root[data-theme^="aero"]) .btn.danger { color: #c0392b; }
+:where(:root[data-theme^="aero"]) .btn.danger.armed { background: linear-gradient(to bottom, #ff9a8a, #e0442f 50%, #c8301c 51%, #f06a52); color: #fff; }
+
+:where(:root[data-theme^="aero"]) .tab[aria-selected="true"] { border-bottom-color: var(--shu); color: var(--ink); text-shadow: 0 0 12px var(--shu-soft); }
+
+/* ---- accents ----------------------------------------------------------- */
+
+:where(:root[data-theme^="aero"]) .brand .dot { width: 10px; height: 10px; background: var(--orb); box-shadow: 0 0 8px var(--shu-soft); }
+:where(:root[data-theme^="aero"]) .brand .jp,
+:where(:root[data-theme^="aero"]) .hero .jp,
+:where(:root[data-theme^="aero"]) .home-search .jp-mark { font-weight: 300; letter-spacing: 0.12em; }
+:where(:root[data-theme="aero"]) .home-search .jp-mark,
+:where(:root[data-theme="aero"]) .hero .jp { color: #0b4e80; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.9), 0 0 24px rgba(255, 255, 255, 0.9); }
+:where(:root[data-theme="aero-night"]) .home-search .jp-mark,
+:where(:root[data-theme="aero-night"]) .hero .jp { color: #e9f8ff; text-shadow: 0 0 18px rgba(63, 208, 255, 0.55); }
+:where(:root[data-theme^="aero"]) .home-search .jp-mark::after,
+:where(:root[data-theme^="aero"]) .hero .jp::after { height: 3px; width: 60px; border-radius: 3px; background: linear-gradient(90deg, #3fd0ff, #6fe39b); }
+
+:where(:root[data-theme^="aero"]) .item .bar,
+:where(:root[data-theme^="aero"]) .thumb .prog { border-radius: 4px; }
+:where(:root[data-theme^="aero"]) .item .bar i,
+:where(:root[data-theme^="aero"]) .thumb .prog i {
+  background: linear-gradient(to bottom, #b6f19a 0%, #4fc33a 50%, #2fa31f 51%, #6fdb4f 100%);
+  box-shadow: 0 0 6px rgba(79, 195, 58, 0.6);
+}
+:where(:root[data-theme^="aero"]) .thumb { background: linear-gradient(160deg, rgba(255,255,255,.55), rgba(140,210,245,.35)); }
+:where(:root[data-theme="aero-night"]) .thumb { background: linear-gradient(160deg, rgba(80,160,230,.25), rgba(10,30,60,.4)); }
+:where(:root[data-theme^="aero"]) .thumb .left { background: rgba(5, 40, 70, 0.6); border: 1px solid rgba(255, 255, 255, 0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+:where(:root[data-theme^="aero"]) .card-v .x { background: var(--gloss); color: var(--ink); border: 1px solid var(--gloss-edge); }
+
+:where(:root[data-theme^="aero"]) .help-layer { background: rgba(4, 30, 60, 0.35); }
+:where(:root[data-theme^="aero"]) .link-hint { background: linear-gradient(to bottom, #fff9c2, #ffe066 50%, #ffd23a 51%, #fff0a0); border-color: #c9a227; }

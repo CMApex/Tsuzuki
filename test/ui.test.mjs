@@ -134,3 +134,60 @@ test('popup: create vault, browse lists safely, settings, lock/unlock', async ()
     realClose();
   }
 });
+
+test('appearance: picking a theme and custom CSS restyles the page; unsafe CSS is refused', async () => {
+  const js = (await build({ entryPoints: [fileURLToPath(new URL('app.js', uiDir))], bundle: true, format: 'iife', write: false, logLevel: 'silent' })).outputFiles[0].text;
+  const html = readFileSync(new URL('options.html', uiDir), 'utf8').replace(/<script src="[^"]+"><\/script>/g, '');
+  const bg = createBackground(fakeBrowser({}), { kdfIterations: 2000 });
+  await bg.handle({ type: 'create', passphrase: 'appearance test pass' }, PAGE);
+  // An http origin here because jsdom gives moz-extension:// pages no localStorage (the app copes; the test wants to look).
+  const dom = new JSDOM(html, { url: 'http://tsuzuki.test/ui/options.html', runScripts: 'outside-only', pretendToBeVisual: true });
+  const { window } = dom;
+  const doc = window.document;
+  window.browser = {
+    runtime: {
+      getManifest: () => ({ version: '0' }),
+      getURL: (p) => `moz-extension://tsuzuki-test/${p}`,
+      sendMessage: (msg) => bg.handle(JSON.parse(JSON.stringify(msg)), PAGE).then((result) => ({ ok: true, result: result ?? null }), (e) => ({ ok: false, error: e.message })),
+    },
+    tabs: { create() {} },
+  };
+  const $ = (s) => doc.querySelector(s);
+  const $$ = (s) => [...doc.querySelectorAll(s)];
+  try {
+    window.eval(js);
+    const until = async (fn, what) => {
+      for (let i = 0; i < 200; i++) {
+        const v = fn();
+        if (v) return v;
+        await new Promise((r) => setTimeout(r, 15));
+      }
+      throw new Error(`timed out waiting for ${what}`);
+    };
+    await until(() => $$('.tab').length, 'main view');
+    $$('.tab').find((t) => t.textContent === 'Settings').click();
+    await until(() => $$('.theme-pick').length === 5, 'theme picker');
+    assert.equal(doc.documentElement.getAttribute('data-theme'), null, 'auto = no attribute');
+
+    $$('.theme-pick').find((b) => b.textContent === 'Aero').click();
+    await until(() => doc.documentElement.getAttribute('data-theme') === 'aero', 'aero applied');
+    assert.equal(JSON.parse(window.localStorage.getItem('tsz:appearance')).theme, 'aero', 'cached for the next page load');
+
+    const css = $('textarea.css-edit');
+    css.value = ':root { --shu: hotpink; }';
+    $$('button').find((b) => b.textContent === 'Apply CSS').click();
+    await until(() => $('#tsz-custom-css')?.textContent === ':root { --shu: hotpink; }', 'custom css applied');
+    assert.equal(doc.head.lastElementChild.id, 'tsz-custom-css', 'loads after the theme stylesheets');
+
+    $('textarea.css-edit').value = 'a { background: url(https://evil.example/seen) }';
+    $$('button').find((b) => b.textContent === 'Apply CSS').click();
+    await until(() => $('.notice.err'), 'refusal');
+    assert.match($('.notice.err').textContent, /network/);
+    assert.equal($('#tsz-custom-css').textContent, ':root { --shu: hotpink; }', 'old CSS kept');
+
+    $$('button').find((b) => b.textContent === 'Clear').click();
+    await until(() => !$('#tsz-custom-css'), 'custom css removed');
+  } finally {
+    window.close();
+  }
+});

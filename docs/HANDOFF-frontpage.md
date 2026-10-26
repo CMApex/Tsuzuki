@@ -127,6 +127,7 @@ Per-device settings (service toggles, instances, home-page prefs) are **local co
 - **Self-hosting is welcome.** As of this handoff she hasn't set up the relay yet. The suggestion on the table is her Windows mini PC (X2 Mini Pro) behind Tailscale (`tailscale serve` for HTTPS, free personal plan). A helper could live next to it.
 - **License:** the frontpage will import AGPL code, so it must be AGPL-compatible. Simplest is AGPL-3.0-or-later too (Nat chose AGPL for Tsuzuki deliberately).
 - **Devices:** Zen browser on Windows (keyboard-driven: vim user, Vimium, tiling WM), so design for keyboard navigation. An M2 MacBook Air for Safari/Xcode work. An iPhone, used through Safari after deleting most apps, so the mobile web experience matters a lot. Prefer Safari-friendly APIs.
+- **Themes (added in v0.4):** Auto, Sumi (dark), Washi (light), Aero and Aero Night (Frutiger Aero), plus user custom CSS guarded against network loads (`core/theme.js`, `extension/src/ui/themes.css`). The frontpage should offer the same set, and can reuse `checkCustomCss` for the same privacy reason: a page showing your history must not let a pasted theme phone home.
 - **Taste:** Tsuzuki's UI is "washi paper, sumi ink, a line of vermilion" (see `extension/src/ui/app.css` tokens). Nat studies Japanese (Yahoo! JAPAN is a supported engine; 続き branding). Matching that aesthetic would make the two feel like one family.
 - **Working style she appreciated:**
   - Direct transparency: say clearly what's verified versus guessed, and flag ToS/privacy trade-offs.

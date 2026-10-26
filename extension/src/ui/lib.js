@@ -68,3 +68,42 @@ export function armedButton(label, confirmLabel, onConfirm) {
 export function brand() {
   return h('div', { class: 'brand' }, h('span', { class: 'jp', text: '続き' }), h('span', { class: 'dot' }), h('span', { class: 'en', text: 'Tsuzuki' }));
 }
+
+// ---------------------------------------------------------------------------
+// Appearance: theme + custom CSS, cached locally so pages paint in the right
+// theme before the background answers (see boot.js).
+// ---------------------------------------------------------------------------
+
+const APPEARANCE_CACHE = 'tsz:appearance';
+
+export function applyAppearance(appearance, { cache = true } = {}) {
+  const a = appearance || { theme: 'auto', customCss: '' };
+  const root = document.documentElement;
+  if (!a.theme || a.theme === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', a.theme);
+
+  let style = document.getElementById('tsz-custom-css');
+  if (a.customCss) {
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'tsz-custom-css';
+      document.head.append(style); // after app/home/themes.css, so it wins
+    }
+    style.textContent = a.customCss; // text, never markup
+  } else {
+    style?.remove();
+  }
+  if (cache) {
+    try {
+      localStorage.setItem(APPEARANCE_CACHE, JSON.stringify({ theme: a.theme || 'auto', customCss: a.customCss || '' }));
+    } catch {}
+  }
+}
+
+export function cachedAppearance() {
+  try {
+    return JSON.parse(localStorage.getItem(APPEARANCE_CACHE) || 'null');
+  } catch {
+    return null;
+  }
+}
