@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Tsuzuki ledger model.
 //
 // The whole ledger is three maps of last-writer-wins (LWW) registers:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // YouTube content script: resume points, watched tracking, thumbnail progress bars,
 // and YouTube search capture. Works on www.youtube.com and m.youtube.com.
 

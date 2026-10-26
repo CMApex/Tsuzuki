@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // URL parsing for the sites Tsuzuki understands. Pure functions, no DOM.
 
 const YT_ID = /^[A-Za-z0-9_-]{11}$/;

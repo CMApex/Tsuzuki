@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use axum::{
     body::Body,
     http::{header, Request, StatusCode},
@@ -330,4 +332,14 @@ async fn cors_preflight_allows_extension_origins() {
     let res = r.oneshot(req).await.unwrap();
     assert!(res.status().is_success());
     assert_eq!(res.headers()["access-control-allow-origin"], "*");
+}
+
+#[tokio::test]
+async fn root_points_to_source() {
+    let dir = tempfile::tempdir().unwrap();
+    let r = relay(&dir, |_| {});
+    let (s, body, _) = call(&r, "GET", "/", None, b"", &[]).await;
+    assert_eq!(s, StatusCode::OK);
+    let text = String::from_utf8(body).unwrap();
+    assert!(text.contains(tsuzuki_relay::SOURCE_URL) && text.contains("AGPL-3.0-or-later"));
 }

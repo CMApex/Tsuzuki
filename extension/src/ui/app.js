@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Tsuzuki popup + options page. Plain DOM, no framework; every piece of
 // remembered text is inserted with textContent, never as HTML.
 

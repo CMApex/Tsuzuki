@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // A minimal in-memory stand-in for the parts of browser.* Tsuzuki's background uses.
 
 function area(store = new Map()) {

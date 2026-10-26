@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Sync over a zero-knowledge relay.
 //
 // Every device owns one slot on the relay and uploads its *entire* merged ledger

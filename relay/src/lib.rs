@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tsuzuki relay: a deliberately dumb, zero-knowledge blob store.
 //!
 //! Layout on disk:
@@ -37,6 +38,10 @@ use tokio::{fs, sync::Mutex};
 use tower_http::cors::{Any, CorsLayer};
 
 pub const REGISTER_HEADER: &str = "x-tsuzuki-register";
+
+/// Where this relay's source lives. AGPL-3.0 §13: anyone using a (modified) relay over
+/// the network must be able to get its source. If you run a modified fork, point this at it.
+pub const SOURCE_URL: &str = "https://github.com/CMApex/Tsuzuki";
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -92,6 +97,7 @@ pub fn app(cfg: Config) -> Router {
         .max_age(Duration::from_secs(3600));
 
     Router::new()
+        .route("/", get(source_info))
         .route("/healthz", get(|| async { "ok" }))
         .route("/v1/vaults/{vault}", delete(delete_vault))
         .route("/v1/vaults/{vault}/blobs", get(list_blobs))
@@ -102,6 +108,13 @@ pub fn app(cfg: Config) -> Router {
         .layer(DefaultBodyLimit::max(max))
         .layer(cors)
         .with_state(state)
+}
+
+async fn source_info() -> String {
+    format!(
+        "tsuzuki-relay {}\nSource: {SOURCE_URL}\nLicense: AGPL-3.0-or-later\n",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 // ---------------------------------------------------------------------------

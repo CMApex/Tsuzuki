@@ -138,4 +138,10 @@ test/                      node:test suites, incl. two devices syncing through a
 
 v0.1, built in one sitting. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The YouTube content script is tested against a simulated player, not live YouTube, and YouTube changes its markup often; selectors live at the top of `content/youtube.js`.
 
-Not yet: changing the passphrase, pruning old tombstones, sites beyond YouTube and the search engines above, a license (all rights reserved until one is picked).
+Not yet: changing the passphrase, pruning old tombstones, sites beyond YouTube and the search engines above.
+
+## License
+
+[GNU Affero General Public License v3.0 or later](LICENSE) (`AGPL-3.0-or-later`), for the extension and the relay alike.
+
+In short: use it, study it, change it, share it. If you distribute a modified version, or run a modified relay that other people use over a network, you have to offer them your source under the same license. The relay's `GET /` points at its source for exactly that reason; if you run a fork, update `SOURCE_URL` in `relay/src/lib.rs`.

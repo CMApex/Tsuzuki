@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Tsuzuki crypto. WebCrypto only, so the same code runs in Firefox, Safari and Node.
 //
 //   passphrase ──PBKDF2-SHA256 (600k, salt = vault id)──▶ master (256 bit)

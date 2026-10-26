@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Runs the bundled YouTube content script inside jsdom against a fake player,
 // to check the tricky bits: SPA navigation, the reused <video> element, ads,
 // resume gating, and the closed-shadow thumbnail markers.

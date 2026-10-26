@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Search-engine content script: notes the query on results pages.
 // Only reads the page URL; never touches the page itself.
 

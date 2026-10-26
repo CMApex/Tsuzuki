@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Builds the extension for Firefox (incl. Zen) and Safari from one source tree.
 //
 //   node extension/build.mjs            → dist/firefox and dist/safari

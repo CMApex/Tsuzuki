@@ -3,6 +3,8 @@ name = "tsuzuki-relay"
 version = "0.1.0"
 edition = "2021"
 description = "Zero-knowledge blob relay for Tsuzuki: stores encrypted per-device snapshots it cannot read."
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/CMApex/Tsuzuki"
 publish = false
 
 [dependencies]

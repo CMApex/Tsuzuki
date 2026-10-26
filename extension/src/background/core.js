@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Tsuzuki background logic. Written against an injected `api` (the browser.*
 // namespace) so it runs unchanged in Firefox, Safari, and Node tests.
 //

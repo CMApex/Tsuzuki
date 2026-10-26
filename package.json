@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "続き — local-first watch history, resume points and search history. Nothing leaves your devices unencrypted.",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CMApex/Tsuzuki"
+  },
   "type": "module",
   "scripts": {
     "build": "node extension/build.mjs",

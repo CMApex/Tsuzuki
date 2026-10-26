@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use std::{net::SocketAddr, path::PathBuf};
 
 use tsuzuki_relay::{app, Config};
@@ -12,6 +14,8 @@ Configuration (environment variables):
   TSUZUKI_MAX_DEVICES      max devices per vault           (default 16)
   TSUZUKI_REGISTER_TOKEN   if set, required to create new vaults (recommended when exposed publicly)
   RUST_LOG                 log filter                       (default info)
+
+Source: https://github.com/CMApex/Tsuzuki (AGPL-3.0-or-later; GET / says so too)
 
 Put it behind HTTPS (Caddy, nginx, Tailscale serve, …). Browsers will only
 talk to plain http:// relays on localhost.

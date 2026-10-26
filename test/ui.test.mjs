@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Drives the real popup UI (in jsdom) against the real background logic.
 
 import { test } from 'node:test';

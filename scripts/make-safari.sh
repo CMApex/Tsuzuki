@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Build the Safari extension and wrap it in an Xcode project (macOS + iOS).
 # Run this on a Mac with Xcode installed. Re-run after pulling changes:
 # the Xcode project references dist/safari, so a rebuild is all it needs.

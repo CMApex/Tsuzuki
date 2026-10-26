@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // End-to-end: two simulated browsers syncing through a real tsuzuki-relay process.
 // Builds on `cargo build` output; skipped if the relay binary isn't there.
 
