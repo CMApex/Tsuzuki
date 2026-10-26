@@ -17,7 +17,8 @@
     "test": "node --test test/*.test.mjs",
     "lint": "npx --yes web-ext@10 lint --source-dir dist/firefox",
     "package:firefox": "npm run build:firefox && npx --yes web-ext@10 build --source-dir dist/firefox --artifacts-dir dist/artifacts --overwrite-dest",
-    "run:firefox": "npx --yes web-ext@10 run --source-dir dist/firefox"
+    "run:firefox": "npx --yes web-ext@10 run --source-dir dist/firefox",
+    "sign:firefox": "npm run build:firefox && git archive --format=zip -o dist/tsuzuki-source.zip HEAD && npx --yes web-ext@10 sign --source-dir dist/firefox --artifacts-dir dist/artifacts --channel unlisted --upload-source-code dist/tsuzuki-source.zip"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

@@ -68,15 +68,21 @@ On Windows, if PowerShell says `npm.ps1 cannot be loaded because running scripts
 ### Firefox / Zen
 
 - **Try it:** open `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on…* → pick `dist/firefox/manifest.json`. (Temporary add-ons vanish on restart.)
-- **Keep it:** release builds of Firefox-based browsers only install signed add-ons. Signing for your own use is free and private: get API keys at <https://addons.mozilla.org/developers/addon/api/key/>, then
+- **Keep it:** Firefox-based release browsers (Zen included) only install signed add-ons permanently. Signing for your own use is free and private:
+  1. Get API keys at <https://addons.mozilla.org/developers/addon/api/key/> (needs a free Firefox account).
+  2. Put them in the environment and sign:
 
-  ```sh
-  npm run build:firefox
-  npx web-ext sign --source-dir dist/firefox --channel unlisted \
-      --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
-  ```
+     ```powershell
+     $env:WEB_EXT_API_KEY = "user:12345:67"      # "JWT issuer"
+     $env:WEB_EXT_API_SECRET = "abc123…"         # "JWT secret"
+     npm run sign:firefox
+     ```
 
-  and install the `.xpi` it produces. Unlisted means it isn't published anywhere.
+     (`export WEB_EXT_API_KEY=…` on macOS/Linux.) It uploads as *unlisted*, so it's signed but never published, and waits for the automatic review, usually a few minutes.
+  3. Install `dist/artifacts/*.xpi`: drag it onto Zen, or *about:addons → ⚙ → Install Add-on From File*.
+
+  Mozilla only signs each version number once, so bump `"version"` in `package.json` before signing an update.
+  Switching from the temporary add-on to the signed one may start with empty storage, so *Export JSON* from Settings first, then *Import JSON* into the new vault.
 - Firefox may ask you to allow the extension on YouTube and search sites. If nothing happens on YouTube, check *about:addons → Tsuzuki → Permissions*.
 
 ### Safari (Mac and iPhone)
