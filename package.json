@@ -1,6 +1,6 @@
 {
   "name": "tsuzuki",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "続き — local-first watch history, resume points and search history. Nothing leaves your devices unencrypted.",
   "license": "AGPL-3.0-or-later",
@@ -9,6 +9,10 @@
     "url": "https://github.com/CMApex/Tsuzuki"
   },
   "type": "module",
+  "exports": {
+    "./core/*": "./extension/src/core/*.js",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "node extension/build.mjs",
     "build:firefox": "node extension/build.mjs firefox",

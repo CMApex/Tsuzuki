@@ -7,8 +7,8 @@ import {
   INSTANCE_TYPES, SEARCH, SERVICES, VIDEO, labelForKey, labelForSrc, linkForKey, normalizeInstanceUrl, searchLinkFor,
   searchTargets,
 } from '../core/services.js';
+import { ago, api, armedButton, brand, call, field, h, input } from './lib.js';
 
-const api = globalThis.browser ?? globalThis.chrome;
 const isPopup = document.body.dataset.mode === 'popup';
 const root = document.getElementById('app');
 const VERSION = api.runtime.getManifest().version;
@@ -28,42 +28,9 @@ const ui = {
 // Plumbing
 // ---------------------------------------------------------------------------
 
-async function call(type, payload = {}) {
-  const res = await api.runtime.sendMessage({ type, ...payload });
-  if (!res) throw new Error('The background script did not answer. Try reopening this page.');
-  if (!res.ok) throw new Error(res.error);
-  return res.result;
-}
-
-function h(tag, props = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(props || {})) {
-    if (v === undefined || v === null || v === false) continue;
-    if (k === 'class') el.className = v;
-    else if (k === 'text') el.textContent = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (k === 'style') el.style.cssText = v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat()) {
-    if (c === null || c === undefined || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  }
-  return el;
-}
-
 function open(url) {
   api.tabs.create({ url });
   if (isPopup) window.close();
-}
-
-function ago(ms) {
-  const s = Math.max(0, (Date.now() - ms) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  if (s < 86400 * 7) return `${Math.floor(s / 86400)}d ago`;
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function guessDeviceName() {
@@ -109,34 +76,6 @@ async function act(button, fn, busyLabel) {
   }
 }
 
-/** A destructive button that needs a second tap within 4 seconds. */
-function armedButton(label, confirmLabel, onConfirm) {
-  const btn = h('button', { class: 'btn danger', type: 'button', text: label });
-  let timer = null;
-  btn.addEventListener('click', () => {
-    if (!btn.classList.contains('armed')) {
-      btn.classList.add('armed');
-      btn.textContent = confirmLabel;
-      timer = setTimeout(() => {
-        btn.classList.remove('armed');
-        btn.textContent = label;
-      }, 4000);
-      return;
-    }
-    clearTimeout(timer);
-    onConfirm(btn);
-  });
-  return btn;
-}
-
-function field(label, input, hint) {
-  return h('label', { class: 'field' }, h('span', { text: label }), input, hint && h('small', { text: hint }));
-}
-
-function input(props) {
-  return h('input', { autocomplete: 'off', spellcheck: 'false', ...props });
-}
-
 // ---------------------------------------------------------------------------
 // Views
 // ---------------------------------------------------------------------------
@@ -145,7 +84,7 @@ function header(right = []) {
   return h(
     'header',
     { class: 'top' },
-    h('div', { class: 'brand' }, h('span', { class: 'jp', text: '続き' }), h('span', { class: 'dot' }), h('span', { class: 'en', text: 'Tsuzuki' })),
+    brand(),
     ...right,
   );
 }
@@ -306,6 +245,7 @@ function syncIndicator() {
 function mainView() {
   const s = ui.status;
   const lockBtn = h('button', { class: 'icon-btn', type: 'button', title: 'Lock', text: 'Lock', onclick: () => act(null, () => call('lock')) });
+  const homeBtn = h('button', { class: 'icon-btn', type: 'button', title: 'Open the home page', text: 'Home', onclick: () => open(api.runtime.getURL('ui/home.html')) });
   const tabs = [
     ['resume', 'Continue', s.stats.resume],
     ['watched', 'Watched', s.stats.watched],
@@ -339,7 +279,7 @@ function mainView() {
   if (ui.tab === 'settings') body.append(...settingsView());
   else renderList(body);
 
-  return [header([syncIndicator(), lockBtn]), tabBar, notice(), body, h('footer', { text: `Tsuzuki ${VERSION} · nothing leaves this device unencrypted` })];
+  return [header([syncIndicator(), homeBtn, lockBtn]), tabBar, notice(), body, h('footer', { text: `Tsuzuki ${VERSION} · nothing leaves this device unencrypted` })];
 }
 
 async function renderList(container) {

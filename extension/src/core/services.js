@@ -396,6 +396,38 @@ export function searchTargets(services, instances = []) {
 }
 
 // ---------------------------------------------------------------------------
+// Bangs (home page search box): "!yt fire emblem" or "fire emblem !yt"
+// ---------------------------------------------------------------------------
+
+export const BANGS = Object.freeze({
+  g: 'google', yt: 'youtube', d: 'duckduckgo', ddg: 'duckduckgo', b: 'bing', br: 'brave', k: 'kagi', sp: 'startpage',
+  eco: 'ecosia', qw: 'qwant', mj: 'mojeek', y: 'yahoo', yj: 'yahoo-japan', ya: 'yandex', bd: 'baidu', nv: 'naver',
+});
+export const INSTANCE_BANGS = Object.freeze({ sx: 'searxng', inv: 'invidious', pi: 'piped', pt: 'peertube' });
+
+/**
+ * Split a bang out of a query. Returns { q, src } where src is null if there was
+ * no bang (or an unknown one, which then stays part of the query).
+ */
+export function parseBang(raw, instances = []) {
+  const text = String(raw || '');
+  const m = text.match(/(^|\s)!([a-z][a-z-]*)(?=\s|$)/i);
+  if (m) {
+    const bang = m[2].toLowerCase();
+    let src = BANGS[bang] || (BY_SRC.has(bang) ? bang : null);
+    if (!src && INSTANCE_BANGS[bang]) {
+      const inst = instances.find((i) => i.enabled && i.type === INSTANCE_BANGS[bang]);
+      if (inst) src = `${inst.type}:${new URL(inst.origin).host}`;
+    }
+    if (src) {
+      const q = (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).trim().replace(/\s+/g, ' ');
+      return { q, src };
+    }
+  }
+  return { q: text.trim(), src: null };
+}
+
+// ---------------------------------------------------------------------------
 // Manifest
 // ---------------------------------------------------------------------------
 

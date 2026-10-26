@@ -15,6 +15,7 @@ Tsuzuki gives those features back **locally**:
 - **Watched.** Videos you finish are remembered; thumbnails get a progress bar.
 - **Search history**, with **"search again on…"** to re-run any remembered query on another engine.
 - **Per-service opt-in.** Switch each site on or off; Tsuzuki only remembers what happens on the ones you choose.
+- **A home page** with one search box for every engine (plus `!bangs` and instant matches from your own history), continue-watching across every service, and your recent searches.
 - **Your own instances.** Add Invidious, Piped, PeerTube or SearXNG servers. Invidious and Piped share history with YouTube.
 - **No algorithm.** Nothing is ranked or recommended. It's a ledger, not a feed.
 - **Encrypted at rest**, with a passphrase only you know.
@@ -34,6 +35,14 @@ Runs in **Firefox / Zen** (desktop) and **Safari** (macOS + iOS) from one codeba
 Toggle them under **Settings → Services**. YouTube Shorts and live streams aren't tracked. Everything about each site lives in [`extension/src/core/services.js`](extension/src/core/services.js) (URL formats) and [`extension/src/content/adapters.js`](extension/src/content/adapters.js) (player and title selectors), so adding one is a small, self-contained change.
 
 The extension's content scripts are declared for every supported site, so your browser lists them all in Tsuzuki's permissions; on a switched-off site the script asks one question and exits without touching the page. Instances are different: each one is granted individually when you add it, and handed back when you remove it.
+
+## Home page
+
+Open it with **Alt+Shift+H** (change it under *about:addons → ⚙ → Manage Extension Shortcuts*), the **Home** button in the popup, or a bookmark. To make it your browser's homepage, open it once and paste its `moz-extension://…/ui/home.html` address into the homepage setting as a custom URL. (It doesn't take over the new-tab page; that's left to you.)
+
+- **Search box:** Enter searches your default engine (click any engine chip while the box is empty to change it). Click a chip to search there instead, or use a bang anywhere in the query: `!g` `!yt` `!ddg` `!b` `!br` `!k` `!sp` `!eco` `!qw` `!mj` `!y` `!yj` `!ya` `!bd` `!nv`, and `!sx` `!inv` `!pi` `!pt` for your instances. As you type, matching videos and past searches from your own history appear; arrow keys + Enter open one.
+- **Continue watching** across YouTube, Nebula, Twitch, Vimeo and your instances, with time left and a per-service filter.
+- **Thumbnails are off by default**, because loading them tells the video site which videos are on your page. Turn them on in the footer; if you've added an Invidious instance they load through it instead of from YouTube.
 
 ## How it works
 
@@ -161,16 +170,30 @@ extension/src/core/        model (CRDT), crypto, sync, services registry, URL pa
 extension/src/background/  vault, lock/unlock, storage, sync scheduling, message API
 extension/src/content/     tracker.js (resume, progress, thumbnails) + adapters.js per site;
                            video.js / search.js / instance.js entry points
-extension/src/ui/          popup + options page
+extension/src/ui/          popup + options page (app.js), home page (home.js), shared helpers (lib.js)
 relay/                     Rust (axum) zero-knowledge blob store
 test/                      node:test suites, incl. two devices syncing through a real relay
 ```
 
 ## Status
 
-v0.2. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
+v0.3. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
 
 Not yet: changing the passphrase, pruning old tombstones, custom instances in Safari (it can't register content scripts for new sites at runtime).
+
+## Using Tsuzuki's core in another project
+
+The data model, crypto, sync client and service registry are plain ES modules with no browser-extension dependencies, exported for reuse:
+
+```js
+// package.json: "dependencies": { "tsuzuki": "github:CMApex/Tsuzuki" }
+import { emptyState, mergeInto } from 'tsuzuki/core/model';
+import { deriveVaultSecrets, importEncKey } from 'tsuzuki/core/crypto';
+import { RelayClient, syncOnce } from 'tsuzuki/core/sync';
+import { searchTargets, linkForKey } from 'tsuzuki/core/services';
+```
+
+[docs/HANDOFF-frontpage.md](docs/HANDOFF-frontpage.md) explains how another app can join a vault as one more device.
 
 ## License
 

@@ -35,6 +35,9 @@ function manifest(target) {
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' },
     },
     options_ui: { page: 'ui/options.html', open_in_tab: true },
+    commands: {
+      'open-home': { suggested_key: { default: 'Alt+Shift+H' }, description: 'Open the Tsuzuki home page' },
+    },
     // Generated from extension/src/core/services.js. Scripts on switched-off services exit immediately.
     content_scripts: manifestContentScripts(),
   };
@@ -68,6 +71,7 @@ const entryPoints = {
   'content/search': join(here, 'src/content/search.js'),
   'content/instance': join(here, 'src/content/instance.js'),
   'ui/app': join(here, 'src/ui/app.js'),
+  'ui/home': join(here, 'src/ui/home.js'),
 };
 
 async function buildTarget(target) {
@@ -87,7 +91,7 @@ async function buildTarget(target) {
   };
 
   await cp(join(here, 'static/icons'), join(out, 'icons'), { recursive: true });
-  for (const f of ['popup.html', 'options.html', 'app.css']) {
+  for (const f of ['popup.html', 'options.html', 'home.html', 'app.css', 'home.css']) {
     await cp(join(here, 'src/ui', f), join(out, 'ui', f));
   }
   await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest(target), null, 2) + '\n');

@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* 続き home page. Builds on app.css tokens. */
+
+body[data-mode="home"] main { max-width: 1120px; margin: 0 auto; padding: 18px 16px 64px; }
+body[data-mode="home"] .top { margin-bottom: 28px; }
+body[data-mode="home"] .top a.icon-btn { text-decoration: none; }
+
+/* ---- search ----------------------------------------------------------- */
+
+.home-search { max-width: 720px; margin: 4vh auto 30px; position: relative; }
+.home-search .jp-mark { text-align: center; font: 600 52px/1 var(--serif); letter-spacing: 0.06em; margin-bottom: 18px; }
+.home-search .jp-mark::after { content: ""; display: block; width: 32px; height: 2px; background: var(--shu); margin: 14px auto 0; }
+
+.qbox { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--rule);
+  border-radius: 14px; padding: 4px 6px 4px 16px; box-shadow: 0 1px 0 rgba(0,0,0,.02); }
+.qbox:focus-within { border-color: var(--shu); box-shadow: 0 0 0 3px var(--shu-soft); }
+.qbox input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: 17px; padding: 11px 0; }
+.qbox .go { border: 0; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 14px; font-weight: 600; cursor: pointer; }
+.qbox .go:hover { background: var(--shu); }
+
+.engines { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+.engine { border: 1px solid var(--rule); background: none; color: var(--ink-2); border-radius: 999px; padding: 4px 11px;
+  font-size: 12.5px; cursor: pointer; }
+.engine:hover { border-color: var(--ink-3); color: var(--ink); }
+.engine[aria-pressed="true"] { border-color: var(--shu); color: var(--shu); background: var(--shu-soft); }
+.hint { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 8px; }
+.hint kbd { font: 11px ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; }
+
+.qwrap { position: relative; }
+.matches { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; list-style: none; margin: 0; padding: 6px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.14); }
+.matches:empty { display: none; }
+.matches li a { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 8px 10px;
+  border-radius: 8px; text-decoration: none; }
+.matches li a[aria-selected="true"], .matches li a:hover { background: var(--shu-soft); }
+.matches .kind { font-size: 11px; color: var(--ink-3); width: 64px; }
+.matches .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.matches .m { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+
+/* ---- sections ---------------------------------------------------------- */
+
+.sec { margin-top: 34px; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.sec-head h2 { font: 600 13px/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+.sec-head .n { color: var(--ink-3); font-size: 12px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.card-v { position: relative; display: block; text-decoration: none; background: var(--card); border: 1px solid var(--rule);
+  border-radius: 12px; overflow: hidden; }
+.card-v:hover { border-color: var(--ink-3); }
+.card-v:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+.thumb { aspect-ratio: 16 / 9; background: linear-gradient(135deg, var(--paper-2), var(--card)); position: relative; display: grid; place-items: center; }
+.thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.thumb .svc { font: 600 13px/1 var(--serif); letter-spacing: 0.08em; color: var(--ink-3); }
+.thumb .left { position: absolute; right: 8px; bottom: 10px; background: rgba(20,17,13,.78); color: #f3ece0; font-size: 11.5px;
+  padding: 2px 6px; border-radius: 5px; font-variant-numeric: tabular-nums; }
+.thumb .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,.15); }
+.thumb .prog i { display: block; height: 100%; background: var(--shu); }
+.card-v .body { padding: 10px 12px 12px; }
+.card-v .ttl { font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.card-v .sub { color: var(--ink-3); font-size: 12px; margin-top: 4px; }
+.card-v .x { position: absolute; top: 6px; right: 6px; background: rgba(20,17,13,.6); color: #fff; opacity: 0; }
+.card-v:hover .x, .card-v:focus-within .x { opacity: 1; }
+@media (hover: none) { .card-v .x { opacity: 1; } }
+
+.searches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 20px; }
+.searches li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--rule); min-width: 0; }
+.searches a { text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.searches a:hover { color: var(--shu); }
+.searches .src { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+.searches select.again { margin: 0; grid-column: auto; }
+
+.done { list-style: none; margin: 0; padding: 0; columns: 2 300px; column-gap: 28px; }
+.done li { break-inside: avoid; padding: 5px 0; display: flex; gap: 10px; align-items: baseline; }
+.done a { text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.done a:hover { color: var(--shu); }
+.done .src { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+
+.home-foot { margin-top: 44px; display: flex; flex-wrap: wrap; gap: 14px 24px; justify-content: center; color: var(--ink-3); font-size: 12px; }
+.home-foot label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.home-foot input { accent-color: var(--shu); }
+
+.home-gate { max-width: 420px; margin: 8vh auto 0; }

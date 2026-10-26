@@ -35,6 +35,8 @@ const RESUME_PULL_TIMEOUT_MS = 2500;
 const ALARM = 'tsz-sync';
 
 export const DEFAULT_FEATURES = Object.freeze({ recording: true, resume: true, badges: true, searches: true });
+/** Home page preferences. Thumbnails are off by default: loading them tells the video site what you've watched. */
+export const DEFAULT_HOME = Object.freeze({ thumbs: false, engine: 'duckduckgo' });
 const CONTENT_SCRIPT_TYPES = new Set(['progress', 'search', 'getResume', 'getMany', 'features', 'instance']);
 const INSTANCE_SCRIPT_PREFIX = 'tsz-inst-';
 const MAX_INSTANCES = 32;
@@ -174,6 +176,10 @@ export function createBackground(api, opts = {}) {
 
   function services() {
     return resolveServices(cfg?.services);
+  }
+
+  function homePrefs() {
+    return { ...DEFAULT_HOME, ...(cfg?.home || {}) };
   }
 
   // ---------------------------------------------------------------- who may record what
@@ -490,6 +496,7 @@ export function createBackground(api, opts = {}) {
         features: features(),
         services: services(),
         instances: cfg.instances || [],
+        home: homePrefs(),
       },
       instancesSupported: instancesSupported(),
       stats: vault ? stats(vault.state) : null,
@@ -564,6 +571,10 @@ export function createBackground(api, opts = {}) {
       const next = { ...cfg };
       if (m.features) next.features = { ...features(), ...pick(m.features, Object.keys(DEFAULT_FEATURES)) };
       if (m.services) next.services = { ...services(), ...pick(m.services, SERVICES.map((x) => x.id)) };
+      if (m.home) {
+        next.home = { ...homePrefs(), ...pick(m.home, ['thumbs']) };
+        if (typeof m.home.engine === 'string' && m.home.engine.length <= 100) next.home.engine = m.home.engine;
+      }
       if (typeof m.deviceName === 'string') next.deviceName = m.deviceName.slice(0, 60) || cfg.deviceName;
       if (typeof m.relayUrl === 'string') {
         const relay = m.relayUrl ? normalizeRelayUrl(m.relayUrl) : '';
@@ -664,6 +675,10 @@ export function createBackground(api, opts = {}) {
       ensureLoaded().then(() => runSync().catch(() => {}));
     });
   }
+
+  api.commands?.onCommand?.addListener((command) => {
+    if (command === 'open-home') api.tabs?.create({ url: api.runtime.getURL('ui/home.html') });
+  });
 
   api.runtime.onInstalled?.addListener((details) => {
     if (details?.reason === 'install') api.runtime.openOptionsPage?.();
