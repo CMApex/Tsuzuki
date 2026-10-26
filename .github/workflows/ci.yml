@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: relay
+
+      - name: Relay — clippy, test, build
+        working-directory: relay
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+          cargo build --release
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Extension — build, lint, test (incl. two-device sync against the relay)
+        run: |
+          npm ci
+          npm run build
+          npm run lint
+          npm test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tsuzuki-extension
+          path: dist/

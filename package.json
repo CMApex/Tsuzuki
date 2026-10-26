@@ -1,0 +1,25 @@
+{
+  "name": "tsuzuki",
+  "version": "0.1.0",
+  "private": true,
+  "description": "続き — local-first watch history, resume points and search history. Nothing leaves your devices unencrypted.",
+  "type": "module",
+  "scripts": {
+    "build": "node extension/build.mjs",
+    "build:firefox": "node extension/build.mjs firefox",
+    "build:safari": "node extension/build.mjs safari",
+    "watch": "node extension/build.mjs --watch",
+    "test": "node --test test/*.test.mjs",
+    "lint": "web-ext lint --source-dir dist/firefox",
+    "package:firefox": "npm run build:firefox && web-ext build --source-dir dist/firefox --artifacts-dir dist/artifacts --overwrite-dest",
+    "run:firefox": "web-ext run --source-dir dist/firefox"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "jsdom": "^26.1.0",
+    "web-ext": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
