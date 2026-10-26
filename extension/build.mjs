@@ -64,9 +64,10 @@ function manifest(target) {
     m.browser_specific_settings = {
       gecko: {
         id: 'tsuzuki@cmapex',
-        strict_min_version: '128.0',
+        strict_min_version: '140.0',
         data_collection_permissions: { required: ['none'] },
       },
+      gecko_android: { strict_min_version: '142.0' },
     };
   } else if (target === 'safari') {
     // iOS requires a non-persistent background; a service worker is the MV3 way.
@@ -94,7 +95,7 @@ async function buildTarget(target) {
     outdir: out,
     bundle: true,
     format: 'iife', // content scripts and Safari's worker can't be ES modules
-    target: target === 'safari' ? ['safari16'] : ['firefox128'],
+    target: target === 'safari' ? ['safari16'] : ['firefox140'],
     legalComments: 'none',
     logLevel: 'warning',
     define: { __TARGET__: JSON.stringify(target) },

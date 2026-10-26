@@ -45,15 +45,25 @@ Each device keeps the whole ledger, encrypted with a key derived from your passp
 
 ## Quick start
 
-Requirements: Node 20+, Rust (for the relay), and a Mac with Xcode for the Safari build.
+Requirements: Node 22+, Rust (for the relay), and a Mac with Xcode for the Safari build.
 
 ```sh
-git clone https://github.com/CMApex/Tsuzuki && cd Tsuzuki
+git clone https://github.com/CMApex/Tsuzuki
+cd Tsuzuki
 npm install
 npm run build          # → dist/firefox and dist/safari
-(cd relay && cargo build)   # the sync tests run against a real relay
+```
+
+That's all you need to load the extension. To run the tests too (the sync tests talk to a real relay):
+
+```sh
+cd relay
+cargo build
+cd ..
 npm test               # core, background, content-script, UI and two-device sync tests
 ```
+
+On Windows, if PowerShell says `npm.ps1 cannot be loaded because running scripts is disabled`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or use `npm.cmd` in place of `npm`.
 
 ### Firefox / Zen
 
