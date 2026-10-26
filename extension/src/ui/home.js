@@ -389,8 +389,8 @@ function header(extra = []) {
       h(
         'span',
         { class: 'icon-btn', title: err || '' },
-        h('span', { class: `led ${err ? 'err' : s.sync?.lastSyncAt ? 'ok' : ''}` }),
-        err ? 'Sync error' : s.sync?.lastSyncAt ? `Synced ${ago(s.sync.lastSyncAt)}` : 'Not synced',
+        h('span', { class: `led ${err || s.sync?.needsConsent ? 'err' : s.sync?.lastSyncAt ? 'ok' : ''}` }),
+        s.sync?.needsConsent ? 'Sync paused' : err ? 'Sync error' : s.sync?.lastSyncAt ? `Synced ${ago(s.sync.lastSyncAt)}` : 'Not synced',
       ),
     );
   }

@@ -2,7 +2,28 @@
 // Small DOM + messaging helpers shared by the popup, options page and home page.
 // Remembered text always goes in via textContent, never as HTML.
 
+import { SYNC_DATA } from '../core/sync.js';
+
 export const api = globalThis.browser ?? globalThis.chrome;
+
+/**
+ * Ask Firefox for permission to send (encrypted) history to the user's relay.
+ * Must be called straight from a click/submit, before any await. Resolves true if
+ * granted, or if this browser has no data-consent system at all (Safari).
+ */
+export function requestSyncConsent() {
+  try {
+    const asked = api.permissions?.request?.({ data_collection: [...SYNC_DATA] });
+    return Promise.resolve(asked).then(
+      (granted) => granted !== false,
+      () => true, // browser doesn't know data_collection: nothing to consent to
+    );
+  } catch {
+    return Promise.resolve(true);
+  }
+}
+
+export const CONSENT_DENIED = 'Sync needs your OK to send your encrypted history to your relay. Leave the relay empty to keep everything on this device.';
 
 export async function call(type, payload = {}) {
   const res = await api.runtime.sendMessage({ type, ...payload });

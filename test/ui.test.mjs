@@ -191,3 +191,36 @@ test('appearance: picking a theme and custom CSS restyles the page; unsafe CSS i
     window.close();
   }
 });
+
+test('setup: declining the sync consent prompt stops vault creation with a relay', async () => {
+  const js = (await build({ entryPoints: [fileURLToPath(new URL('app.js', uiDir))], bundle: true, format: 'iife', write: false, logLevel: 'silent' })).outputFiles[0].text;
+  const html = readFileSync(new URL('popup.html', uiDir), 'utf8').replace(/<script src="[^"]+"><\/script>/g, '');
+  const bg = createBackground(fakeBrowser({}), { kdfIterations: 2000 });
+  const dom = new JSDOM(html, { url: 'http://tsuzuki.test/ui/popup.html', runScripts: 'outside-only', pretendToBeVisual: true });
+  const { window } = dom;
+  const asked = [];
+  window.browser = {
+    runtime: {
+      getManifest: () => ({ version: '0' }),
+      getURL: (p) => `moz-extension://tsuzuki-test/${p}`,
+      sendMessage: (msg) => bg.handle(JSON.parse(JSON.stringify(msg)), PAGE).then((result) => ({ ok: true, result: result ?? null }), (e) => ({ ok: false, error: e.message })),
+    },
+    permissions: { request: async (p) => (asked.push(JSON.parse(JSON.stringify(p))), false) },
+    tabs: { create() {} },
+  };
+  const doc = window.document;
+  try {
+    window.eval(js);
+    for (let i = 0; i < 200 && !doc.querySelector('form'); i++) await new Promise((r) => setTimeout(r, 15));
+    const [pass, confirm] = doc.querySelectorAll('input[type=password]');
+    pass.value = confirm.value = 'a long enough passphrase';
+    doc.querySelector('input[type=url]').value = 'https://relay.example.net';
+    doc.querySelector('form').dispatchEvent(new window.Event('submit', { cancelable: true }));
+    for (let i = 0; i < 200 && !doc.querySelector('.notice.err'); i++) await new Promise((r) => setTimeout(r, 15));
+    assert.deepEqual(asked, [{ data_collection: ['browsingActivity', 'searchTerms'] }], 'asked Firefox, from the submit');
+    assert.match(doc.querySelector('.notice.err').textContent, /needs your OK/);
+    assert.equal((await bg.handle({ type: 'status' }, PAGE)).configured, false, 'no vault created');
+  } finally {
+    window.close();
+  }
+});

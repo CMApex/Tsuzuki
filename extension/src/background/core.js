@@ -16,7 +16,7 @@ import {
 import {
   KINDS, emptyState, forget, listLive, mergeInto, progressFor, recordProgress, recordSearch, stats,
 } from '../core/model.js';
-import { RelayClient, RelayError, normalizeRelayUrl, syncOnce } from '../core/sync.js';
+import { RelayClient, RelayError, SYNC_DATA, normalizeRelayUrl, syncOnce } from '../core/sync.js';
 import {
   INSTANCE_TYPES, SERVICES, VIDEO, instancePattern, normalizeInstanceUrl, resolveServices, searchServiceBySrc,
   serviceById,
@@ -298,6 +298,23 @@ export function createBackground(api, opts = {}) {
     });
   }
 
+  /**
+   * 'granted' | 'needed' | 'unsupported'. Browsers without Firefox's data-consent
+   * system (Safari, tests) report 'unsupported', and sync simply runs.
+   */
+  async function syncConsent() {
+    if (!api.permissions?.getAll) return 'unsupported';
+    try {
+      const all = await api.permissions.getAll();
+      if (!Array.isArray(all?.data_collection)) return 'unsupported';
+      return SYNC_DATA.every((d) => all.data_collection.includes(d)) ? 'granted' : 'needed';
+    } catch {
+      return 'unsupported';
+    }
+  }
+
+  const CONSENT_NEEDED = 'Sync is paused until you allow Tsuzuki to send your (encrypted) history to your relay: Settings → Sync → Allow sync.';
+
   function scheduleSync(delay = SYNC_AFTER_CHANGE_MS) {
     if (!cfg?.relayUrl) return;
     clearTimeout(syncTimer);
@@ -310,6 +327,7 @@ export function createBackground(api, opts = {}) {
     if (syncing) return syncing;
     syncing = (async () => {
       if (!cfg?.relayUrl || !vault) return { skipped: true };
+      if ((await syncConsent()) === 'needed') return { skipped: true, needsConsent: true };
       const meta = await getSyncMeta();
       try {
         const result = await syncOnce({
@@ -382,7 +400,10 @@ export function createBackground(api, opts = {}) {
     await setKeys(secrets);
     await local.set({ [K.state]: await sealState(key, vault.state), [K.sync]: { seen: {} } });
     let syncError = null;
-    if (relay) await runSync().catch((e) => (syncError = e.message));
+    if (relay) {
+      const r = await runSync().catch((e) => ({ error: e.message }));
+      syncError = r.error || (r.needsConsent ? CONSENT_NEEDED : null);
+    }
     return { vaultId, syncError };
   }
 
@@ -393,6 +414,7 @@ export function createBackground(api, opts = {}) {
     if (!relayUrl) throw new UserError('Joining a vault needs the relay URL your other device uses.');
     const relay = normalizeRelayUrl(relayUrl);
     if (!passphrase) throw new UserError('Enter the vault passphrase.');
+    if ((await syncConsent()) === 'needed') throw new UserError('Joining needs your OK to sync with the relay. Allow it when Firefox asks.');
 
     const secrets = await deriveVaultSecrets(passphrase, id, iterations);
     const key = await importEncKey(secrets.encKeyRaw);
@@ -503,6 +525,7 @@ export function createBackground(api, opts = {}) {
       instancesSupported: instancesSupported(),
       stats: vault ? stats(vault.state) : null,
       sync: meta && {
+        needsConsent: !!cfg?.relayUrl && (await syncConsent()) === 'needed',
         lastSyncAt: meta.lastSyncAt || null,
         lastError: meta.lastError || null,
         lastResult: meta.lastResult || null,
@@ -641,7 +664,9 @@ export function createBackground(api, opts = {}) {
     syncNow: async () => {
       requireUnlocked();
       if (!cfg.relayUrl) throw new UserError('Set a relay URL in Settings to sync.');
-      return runSync();
+      const r = await runSync();
+      if (r.needsConsent) throw new UserError(CONSENT_NEEDED);
+      return r;
     },
     export: async () => {
       requireUnlocked();

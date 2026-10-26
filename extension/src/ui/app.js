@@ -7,7 +7,7 @@ import {
   INSTANCE_TYPES, SEARCH, SERVICES, VIDEO, labelForKey, labelForSrc, linkForKey, normalizeInstanceUrl, searchLinkFor,
   searchTargets,
 } from '../core/services.js';
-import { ago, api, applyAppearance, armedButton, brand, call, field, h, input } from './lib.js';
+import { CONSENT_DENIED, ago, api, applyAppearance, armedButton, brand, call, field, h, input, requestSyncConsent } from './lib.js';
 import { THEMES } from '../core/theme.js';
 
 const isPopup = document.body.dataset.mode === 'popup';
@@ -123,7 +123,9 @@ function setupView() {
         if (mode === 'create') {
           if (pass.value.length < MIN_PASSPHRASE) return say('err', `Use at least ${MIN_PASSPHRASE} characters. Four or five random words is ideal.`);
           if (pass.value !== pass2.value) return say('err', "The passphrases don't match.");
+          const consent = relay.value.trim() ? requestSyncConsent() : Promise.resolve(true);
           act(submit, async () => {
+            if (!(await consent)) throw new Error(CONSENT_DENIED);
             const res = await call('create', { passphrase: pass.value, deviceName: name.value, relayUrl: relay.value, registerToken: reg.value });
             ui.createdVault = res.vaultId;
             ui.notice = res.syncError
@@ -131,7 +133,9 @@ function setupView() {
               : null;
           }, 'Deriving key…');
         } else {
+          const consent = requestSyncConsent();
           act(submit, async () => {
+            if (!(await consent)) throw new Error(CONSENT_DENIED);
             const res = await call('join', {
               vaultId: vaultCode.value, passphrase: pass.value, deviceName: name.value, relayUrl: relay.value, registerToken: reg.value,
             });
@@ -224,16 +228,19 @@ function syncIndicator() {
   const s = ui.status;
   if (!s.cfg.relayUrl) return null;
   const err = s.sync?.lastError;
-  const label = err ? 'Sync error' : s.sync?.lastSyncAt ? `Synced ${ago(s.sync.lastSyncAt)}` : 'Not synced';
+  const paused = s.sync?.needsConsent;
+  const label = paused ? 'Sync paused' : err ? 'Sync error' : s.sync?.lastSyncAt ? `Synced ${ago(s.sync.lastSyncAt)}` : 'Not synced';
   const btn = h(
     'button',
     { class: 'icon-btn', type: 'button', title: err || 'Sync now' },
-    h('span', { class: `led ${err ? 'err' : s.sync?.lastSyncAt ? 'ok' : ''}` }),
+    h('span', { class: `led ${err || paused ? 'err' : s.sync?.lastSyncAt ? 'ok' : ''}` }),
     label,
   );
   btn.addEventListener('click', () => {
     btn.setAttribute('aria-busy', 'true');
+    const consent = paused ? requestSyncConsent() : Promise.resolve(true);
     act(null, async () => {
+      if (!(await consent)) throw new Error(CONSENT_DENIED);
       const r = await call('syncNow');
       ui.notice = r.errors?.length
         ? { kind: 'err', text: `Synced, but ${r.errors.length} device snapshot(s) couldn't be decrypted.` }
@@ -484,7 +491,9 @@ function settingsView() {
         class: 'card',
         onsubmit: (e) => {
           e.preventDefault();
+          const consent = relay.value.trim() && relay.value.trim() !== s.cfg.relayUrl ? requestSyncConsent() : Promise.resolve(true);
           act(saveSync, async () => {
+            if (!(await consent)) throw new Error(CONSENT_DENIED);
             const payload = { relayUrl: relay.value, deviceName: name.value };
             if (reg.value) payload.registerToken = reg.value;
             await call('settings', payload);
@@ -504,7 +513,29 @@ function settingsView() {
       field('Registration token', reg, 'Only needed if the relay requires one to create vaults.'),
       field('This device is called', name),
       h('p', { class: 'muted', text: syncLine }),
-      h('div', { class: 'row' }, saveSync),
+      s.sync?.needsConsent
+        ? h('p', { class: 'notice err', text: 'Sync is paused: Firefox needs your OK before Tsuzuki sends your encrypted history to your relay.' })
+        : null,
+      h(
+        'div',
+        { class: 'row' },
+        saveSync,
+        s.sync?.needsConsent
+          ? h('button', {
+              class: 'btn primary',
+              type: 'button',
+              text: 'Allow sync',
+              onclick: (e) => {
+                const consent = requestSyncConsent();
+                act(e.currentTarget, async () => {
+                  if (!(await consent)) throw new Error(CONSENT_DENIED);
+                  await call('syncNow');
+                  ui.notice = { kind: 'ok', text: 'Sync allowed and running.' };
+                });
+              },
+            })
+          : null,
+      ),
     ),
     h(
       'div',

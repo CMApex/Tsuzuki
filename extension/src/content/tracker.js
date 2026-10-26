@@ -103,7 +103,7 @@ export function startVideoTracker({ service, adapter, features }) {
     if (el.currentTime >= r.t - 5) return; // already there, or the viewer skipped ahead
     const from = el.currentTime;
     el.currentTime = r.t;
-    toast(`続き · Resumed at ${formatTime(r.t)}`, 'Start over', () => {
+    toast(`続き Tsuzuki · Resumed at ${formatTime(r.t)}`, 'Start over', () => {
       el.currentTime = from < MIN_RESUME ? 0 : from;
     });
     // Some players snap back right after a programmatic seek; nudge once more.

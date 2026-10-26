@@ -267,3 +267,46 @@ test('appearance: themes and custom CSS are validated and stored', async () => {
   await assert.rejects(page('settings', { appearance: { customCss: 'a{background:url(https://evil.example)}' } }), /network/);
   assert.equal((await page('status')).cfg.appearance.customCss, ':root { --shu: hotpink }', 'rejected CSS leaves the old one');
 });
+
+test('sync waits for Firefox data-collection consent', async () => {
+  const granted = new Set();
+  let relayCalls = 0;
+  const fakeFetch = async (url, init = {}) => {
+    relayCalls++;
+    const body = init.method === 'PUT' ? JSON.stringify({ etag: 'e1' }) : JSON.stringify({ blobs: [] });
+    return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  const { api, page } = setup({}, { fetch: fakeFetch });
+  api.permissions = {
+    async getAll() {
+      return { origins: [], permissions: [], data_collection: [...granted] };
+    },
+  };
+
+  // Creating a vault with a relay but without consent: the vault is made, sync is paused.
+  const res = await page('create', { passphrase: PASS, relayUrl: 'https://relay.example.net' });
+  assert.match(res.syncError, /paused until you allow/);
+  assert.equal(relayCalls, 0, 'nothing sent to the relay');
+  assert.equal((await page('status')).sync.needsConsent, true);
+  await assert.rejects(page('syncNow'), /paused until you allow/);
+  assert.equal(relayCalls, 0);
+
+  // Partial consent isn't enough.
+  granted.add('browsingActivity');
+  await assert.rejects(page('syncNow'), /paused/);
+
+  granted.add('searchTerms');
+  assert.equal((await page('status')).sync.needsConsent, false);
+  await page('syncNow');
+  assert.ok(relayCalls > 0, 'syncs once allowed');
+});
+
+test('joining a vault also asks for consent first', async () => {
+  const { api, page } = setup({}, { fetch: async () => { throw new Error('must not be called'); } });
+  api.permissions = { async getAll() { return { data_collection: [] }; } };
+  await assert.rejects(
+    page('join', { vaultId: 'vaultAAAAAAAAAAAAAAAAA', passphrase: PASS, relayUrl: 'https://relay.example.net' }),
+    /needs your OK/,
+  );
+  assert.equal((await page('status')).configured, false);
+});

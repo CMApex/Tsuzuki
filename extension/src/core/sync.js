@@ -10,6 +10,14 @@
 import { aad, openJSON, sealJSON, sha256Hex, DecryptError } from './crypto.js';
 import { mergeInto, stableStringify } from './model.js';
 
+/**
+ * What sync sends off the device, in Firefox's data-collection vocabulary. Tsuzuki
+ * collects nothing by default; these are optional and requested when the user adds
+ * a relay. (The data is end-to-end encrypted and goes only to the user's own relay,
+ * but it does leave the browser, so we ask.)
+ */
+export const SYNC_DATA = Object.freeze(['browsingActivity', 'searchTerms']);
+
 export class RelayError extends Error {
   constructor(message, status) {
     super(message);

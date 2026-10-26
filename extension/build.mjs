@@ -52,7 +52,9 @@ function manifest(target) {
       gecko: {
         id: 'tsuzuki@cmapex',
         strict_min_version: '140.0',
-        data_collection_permissions: { required: ['none'] },
+        // Nothing by default. Sync (opt-in, to the user's own relay, end-to-end encrypted)
+        // sends browsing activity and search terms off the device, so it asks first.
+        data_collection_permissions: { required: ['none'], optional: ['browsingActivity', 'searchTerms'] },
       },
       gecko_android: { strict_min_version: '142.0' },
     };

@@ -194,9 +194,13 @@ test/                      node:test suites, incl. two devices syncing through a
 
 ## Status
 
-v0.4. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
+v0.5. The core, crypto, relay and sync are covered by tests (including a property test of the CRDT laws and a two-device sync through a real relay process). The content scripts are tested against simulated pages and players for every kind of site, not against the live sites, which change their markup often; if one breaks, its selectors are in `content/adapters.js`.
 
 Not yet: changing the passphrase, pruning old tombstones, custom instances in Safari (it can't register content scripts for new sites at runtime).
+
+## Publishing
+
+[docs/AMO.md](docs/AMO.md) has everything for an addons.mozilla.org listing: `npm run package:amo` builds the upload and source zips, plus listing copy, reviewer notes and screenshots. [PRIVACY.md](PRIVACY.md) is the privacy policy.
 
 ## Using Tsuzuki's core in another project
 
