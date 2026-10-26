@@ -1,6 +1,6 @@
 {
   "name": "tsuzuki",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "続き — local-first watch history, resume points and search history. Nothing leaves your devices unencrypted.",
   "license": "AGPL-3.0-or-later",

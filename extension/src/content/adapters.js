@@ -26,10 +26,19 @@ function largestVideo() {
   return best;
 }
 
-function cleanTitle(suffix) {
-  const og = document.querySelector('meta[property="og:title"]')?.content?.trim();
-  const t = (og || document.title || '').replace(/^\(\d+\)\s*/, '');
-  return suffix ? t.replace(suffix, '').trim() : t.trim();
+/**
+ * Best title from og:title, then document.title, with the site's suffix removed.
+ * A bare site name ("Twitch") is never accepted: single-page apps often leave
+ * og:title at their default, while document.title tracks the actual video.
+ */
+function cleanTitle(suffix, siteName = '') {
+  const candidates = [document.querySelector('meta[property="og:title"]')?.content, document.title];
+  for (const raw of candidates) {
+    let t = String(raw || '').replace(/^\(\d+\)\s*/, '').trim();
+    if (suffix) t = t.replace(suffix, '').trim();
+    if (t && t.toLowerCase() !== siteName.toLowerCase()) return t;
+  }
+  return '';
 }
 
 function make(id, overrides) {
@@ -38,7 +47,7 @@ function make(id, overrides) {
     identify: (url) => identifyVideo(id, url),
     findVideo: largestVideo,
     adShowing: () => false,
-    title: () => cleanTitle(),
+    title: () => cleanTitle(undefined, def?.label || ''),
     channel: () => '',
     thumbs: def?.thumbs || null,
     navEvents: def?.navEvents || [],
@@ -72,23 +81,24 @@ export const ADAPTERS = {
 
   'youtube-music': make('youtube-music', {
     adShowing: youtubeAds,
-    title: () => text('ytmusic-player-bar .title') || cleanTitle(/\s+-\s+YouTube Music$/),
+    title: () => text('ytmusic-player-bar .title') || cleanTitle(/\s+-\s+YouTube Music$/, 'YouTube Music'),
     channel: () => text('ytmusic-player-bar .byline a') || text('ytmusic-player-bar .byline'),
   }),
 
   nebula: make('nebula', {
-    title: () => cleanTitle(/\s+[–|-]\s+Nebula$/),
+    title: () => cleanTitle(/\s+[–|-]\s+Nebula$/, 'Nebula'),
   }),
 
   twitch: make('twitch', {
     adShowing: () =>
       !!document.querySelector('[data-a-target="video-ad-label"], [data-a-target="video-ad-countdown"], .video-ad-label'),
-    title: () => text('[data-a-target="stream-title"]') || cleanTitle(/\s+-\s+Twitch$/),
-    channel: () => text('[data-a-target="video-info-channel-link"]') || text('h1.tw-title'),
+    // Twitch keeps og:title at "Twitch"; document.title is "<video title> - Twitch" (verified on a live VOD page).
+    title: () => text('[data-a-target="stream-title"]') || cleanTitle(/\s+-\s+Twitch$/, 'Twitch'),
+    channel: () => text('[data-a-target="video-info-channel-link"]') || text('h1.tw-title') || text('main h1') || text('h1'),
   }),
 
   vimeo: make('vimeo', {
-    title: () => cleanTitle(/\s+(on|from .+ on)\s+Vimeo$/),
+    title: () => cleanTitle(/\s+(on|from .+ on)\s+Vimeo$/, 'Vimeo'),
   }),
 };
 
@@ -96,7 +106,7 @@ export const ADAPTERS = {
 export function instanceAdapter(type) {
   const suffix = { invidious: /\s+-\s+Invidious$/, piped: /\s+-\s+Piped$/ }[type];
   return make(type, {
-    title: () => cleanTitle(suffix),
+    title: () => cleanTitle(suffix, INSTANCE_TYPES[type]?.label || ''),
     channel: () => (type === 'invidious' ? text('#channel-name') : ''),
   });
 }

@@ -184,8 +184,9 @@ test('Nebula: generic player, og:title, thumbnails', async () => {
 
 test('Twitch VODs: ads are skipped', async () => {
   const p = await load('video', 'https://www.twitch.tv/videos/2283745519', {
-    head: '<title>Speedrun marathon - Twitch</title>',
-    body: '<div class="player"><span data-a-target="video-ad-label">Ad</span><video></video></div>',
+    // Real Twitch VOD page shape: og:title stuck at "Twitch", the title only in document.title.
+    head: '<meta property="og:title" content="Twitch"><title>WE WERE HERE TOMORROW WITH @rainhoe | !merch - Twitch</title>',
+    body: '<div class="player"><span data-a-target="video-ad-label">Ad</span><video></video></div><h1>CDawg</h1>',
   }, { services: { twitch: true } });
   try {
     Object.assign(p.v, { readyState: 1, currentSrc: 'blob:ad', duration: 30, currentTime: 10, paused: true });
@@ -200,7 +201,8 @@ test('Twitch VODs: ads are skipped', async () => {
     await sleep(20);
     Object.assign(p.v, { currentTime: 3600 });
     p.fire('pause');
-    assert.deepEqual([p.progress().at(-1).key, p.progress().at(-1).t, p.progress().at(-1).title], ['twitch:2283745519', 3600, 'Speedrun marathon']);
+    const last = p.progress().at(-1);
+    assert.deepEqual([last.key, last.t, last.title, last.ch], ['twitch:2283745519', 3600, 'WE WERE HERE TOMORROW WITH @rainhoe | !merch', 'CDawg']);
   } finally {
     p.close();
   }
