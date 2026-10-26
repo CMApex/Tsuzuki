@@ -14,6 +14,11 @@
 // story: devices can exchange snapshots in any order, any number of times, and
 // they always converge. A replayed or stale snapshot can never undo newer data.
 
+import { compileQuery, matchScore, prepareText } from './search.js';
+
+// Normalised search text per record object. Records are replaced, never mutated, so this stays valid.
+const searchText = new WeakMap();
+
 export const SCHEMA_VERSION = 1;
 export const KINDS = Object.freeze(['resume', 'watched', 'searches']);
 
@@ -222,19 +227,26 @@ export function forget(state, kind, key, now, dev) {
 }
 
 /** Live entries of a kind, newest first, optionally filtered by a text query. */
+/**
+ * Live entries of a kind. Without a query: newest first. With one: fuzzy-matched
+ * (see search.js) and ranked by match quality, then recency.
+ */
 export function listLive(state, kind, { query = '', limit = 200 } = {}) {
-  const needle = query.trim().toLowerCase();
+  const q = compileQuery(query);
   const out = [];
   for (const [key, rec] of Object.entries(state[kind] || {})) {
     if (!isLive(rec)) continue;
-    if (needle) {
-      const hay = `${rec.title || ''} ${rec.ch || ''} ${rec.q || ''} ${key}`.toLowerCase();
-      if (!hay.includes(needle)) continue;
+    let prepared = null;
+    if (!q.empty) {
+      prepared = searchText.get(rec);
+      if (!prepared) searchText.set(rec, (prepared = prepareText(`${rec.title || ''} ${rec.ch || ''} ${rec.q || ''} ${key}`)));
     }
-    out.push({ key, ...rec });
+    const score = q.empty ? 1 : matchScore(q, prepared);
+    if (!score) continue;
+    out.push({ key, ...rec, _score: score });
   }
-  out.sort((a, b) => b.at - a.at);
-  return out.slice(0, limit);
+  out.sort((a, b) => b._score - a._score || b.at - a.at);
+  return out.slice(0, limit).map(({ _score, ...e }) => e);
 }
 
 export function stats(state) {
